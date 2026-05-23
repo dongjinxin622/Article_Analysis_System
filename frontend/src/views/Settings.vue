@@ -253,38 +253,23 @@ async function savePassword() {
           <el-row :gutter="20">
             <el-col :span="6">
               <el-card shadow="hover">
-                <el-statistic title="MySQL" :value="serviceStatus.mysql?.host || '—'">
-                  <template #suffix>
-                    <el-tag size="small" type="success">connected</el-tag>
-                  </template>
-                </el-statistic>
+                <el-statistic title="MySQL" :value="serviceStatus.mysql ? '已连接' : '—'" />
               </el-card>
             </el-col>
             <el-col :span="6">
               <el-card shadow="hover">
-                <el-statistic title="Milvus" :value="serviceStatus.milvus?.host || '—'">
-                  <template #suffix>
-                    <el-tag size="small" type="success">connected</el-tag>
-                  </template>
-                </el-statistic>
+                <el-statistic title="Milvus" :value="serviceStatus.milvus ? '已连接' : '—'" />
               </el-card>
             </el-col>
             <el-col :span="6">
               <el-card shadow="hover">
-                <el-statistic title="Redis" :value="serviceStatus.redis?.host || '—'">
-                  <template #suffix>
-                    <el-tag size="small" type="success">connected</el-tag>
-                  </template>
-                </el-statistic>
+                <el-statistic title="Redis" :value="serviceStatus.redis ? '已连接' : '—'" />
               </el-card>
             </el-col>
             <el-col :span="6">
               <el-card shadow="hover">
-                <el-statistic title="GROBID" :value="serviceStatus.grobid?.url || '—'">
-                  <template #suffix>
-                    <el-tag size="small" type="success">configured</el-tag>
-                  </template>
-                </el-statistic>
+                <el-statistic title="GROBID" :value="serviceStatus.grobid ? '已配置' : '—'" />
+              </el-card>
               </el-col>
             </el-row>
         </el-card>

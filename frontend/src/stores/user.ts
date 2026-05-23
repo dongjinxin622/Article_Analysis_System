@@ -45,7 +45,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   // 注册
-  async function register(data: { username: string; password: string; email?: string; full_name?: string }) {
+  async function register(data: { username: string; password: string; repassword: string; email?: string; full_name?: string }) {
     const userData = await userApi.register(data)
     user.value = userData
     return userData
