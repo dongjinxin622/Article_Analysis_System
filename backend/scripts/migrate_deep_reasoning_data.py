@@ -33,11 +33,11 @@ V2_SQLITE_PATH = V2_ROOT / "data" / "REBCO_database" / "rebco.db"
 # 云端配置
 MILVUS_URI = "http://8.147.69.101:19530"
 MILVUS_DATABASE = "scipdf"
-MYSQL_HOST = "8.147.69.101"
-MYSQL_PORT = 3306
-MYSQL_USER = "root"
-MYSQL_PASSWORD = "Djx3861599!"
-MYSQL_DATABASE = "article_analysis_v3"
+POSTGRES_HOST = "8.147.69.101"
+POSTGRES_PORT = 5432
+POSTGRES_USER = "root"
+POSTGRES_PASSWORD = "Djx3861599!"
+POSTGRES_DATABASE = "article_analysis_v3"
 
 # 向量维度
 EMBEDDING_DIM = 1024
@@ -62,14 +62,14 @@ def connect_milvus():
 
 def connect_mysql():
     """连接云端 MySQL"""
-    import pymysql
-    logger.info(f"连接 MySQL: {MYSQL_HOST}")
-    conn = pymysql.connect(
-        host=MYSQL_HOST,
-        port=MYSQL_PORT,
-        user=MYSQL_USER,
-        password=MYSQL_PASSWORD,
-        database=MYSQL_DATABASE,
+    import psycopg2
+    logger.info(f"连接 PostgreSQL: {POSTGRES_HOST}")
+    conn = psycopg2.connect(
+        host=POSTGRES_HOST,
+        port=POSTGRES_PORT,
+        user=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        database=POSTGRES_DATABASE,
         charset='utf8mb4'
     )
     return conn
@@ -394,7 +394,7 @@ def create_jc_tables(conn_mysql):
         INDEX idx_doi (doi),
         INDEX idx_temp (temperature),
         INDEX idx_field (magneticfield)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    )
     """
     cursor.execute(create_jc_indices_sql)
 
@@ -408,7 +408,7 @@ def create_jc_tables(conn_mysql):
         source_section VARCHAR(255),
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_doi (doi)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    )
     """
     cursor.execute(create_jc_raw_sql)
 

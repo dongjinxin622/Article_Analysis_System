@@ -1,7 +1,7 @@
 """
 数据库连接管理 - 异步版本
-使用 aiomysql 实现异步数据库操作
-针对远程MySQL服务器连接不稳定问题进行优化
+使用 asyncpg 实现异步数据库操作
+针对远程PostgreSQL服务器连接不稳定问题进行优化
 """
 import logging
 import asyncio
@@ -16,20 +16,19 @@ from backend.app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # 创建异步数据库引擎
-# 针对远程MySQL服务器优化：
-# - pool_pre_ping: 每次使用前检查连接有效性（关键！）
-# - pool_recycle: 5分钟回收连接（远程服务器可能有短超时）
+# PostgreSQL (asyncpg) 配置：
+# - pool_pre_ping: 每次使用前检查连接有效性
+# - pool_recycle: 1小时回收连接（PG 默认不回收）
 # - pool_timeout: 获取连接超时时间
 # - echo: 调试模式下显示SQL
 engine = create_async_engine(
     settings.DATABASE_URL_ASYNC,
-    pool_pre_ping=True,      # 使用前检查连接（自动检测失效连接）
-    pool_recycle=300,        # 5分钟回收连接（更短时间避免服务器超时）
-    pool_timeout=30,         # 获取连接超时30秒
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    pool_timeout=30,
     echo=settings.DEBUG,
-    pool_size=5,             # 减小连接池大小（避免过多空闲连接）
-    max_overflow=10,         # 最大溢出连接数
-    isolation_level="AUTOCOMMIT"  # 自动提交模式减少锁等待
+    pool_size=5,
+    max_overflow=10,
 )
 
 # 创建异步会话工厂
@@ -68,7 +67,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
                     return  # 成功完成，退出
                 except OperationalError as e:
                     # 连接错误，尝试重试
-                    if 'Lost connection' in str(e) or '2013' in str(e) or '2006' in str(e):
+                    if 'server closed the connection' in str(e) or 'connection was closed' in str(e):
                         logger.warning(f"数据库连接丢失，尝试重试 ({attempt + 1}/{max_retries}): {e}")
                         await session.rollback()
                         if attempt < max_retries - 1:
@@ -113,7 +112,7 @@ async def get_db_context():
                     return  # 成功完成，退出
                 except OperationalError as e:
                     # 连接错误，尝试重试
-                    if 'Lost connection' in str(e) or '2013' in str(e) or '2006' in str(e):
+                    if 'server closed the connection' in str(e) or 'connection was closed' in str(e):
                         logger.warning(f"数据库连接丢失，尝试重试 ({attempt + 1}/{max_retries}): {e}")
                         await session.rollback()
                         if attempt < max_retries - 1:

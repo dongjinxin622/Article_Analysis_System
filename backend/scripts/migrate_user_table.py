@@ -27,7 +27,7 @@ async def migrate():
     async with engine.begin() as conn:
         # 1. 检查旧表是否存在
         result = await conn.execute(
-            text("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'users'")
+            text("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'users' AND table_catalog = current_database()")
         )
         table_exists = result.scalar() > 0
 
@@ -37,8 +37,11 @@ async def migrate():
             print("新 users 表已创建")
             return
 
-        # 2. 查看旧表结构
-        result = await conn.execute(text("DESCRIBE users"))
+        # 2. 查看旧表结构（PostgreSQL information_schema）
+        result = await conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'users' AND table_catalog = current_database()"
+        ))
         columns = [row[0] for row in result.fetchall()]
         print(f"当前 users 表字段: {columns}")
 
@@ -50,7 +53,7 @@ async def migrate():
         # 3. 备份旧表
         print("备份旧 users 表...")
         await conn.execute(text("DROP TABLE IF EXISTS users_backup"))
-        await conn.execute(text("CREATE TABLE users_backup AS SELECT * FROM users"))
+        await conn.execute(text("CREATE TABLE users_backup AS TABLE users"))
         result = await conn.execute(text("SELECT COUNT(*) FROM users_backup"))
         backup_count = result.scalar()
         print(f"已备份 {backup_count} 条用户记录")
@@ -59,22 +62,20 @@ async def migrate():
         result = await conn.execute(text("SELECT id, username, email, full_name, hashed_password, is_active, is_admin, last_login, created_at FROM users"))
         old_rows = result.fetchall()
 
-        # 5. 处理外键引用：暂时禁用外键检查
-        print("禁用外键检查...")
-        await conn.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+        # 5. 处理外键引用（PostgreSQL 在事务内 DDL 自动处理外键）
 
         # 查找引用 users 的外键
         result = await conn.execute(
             text("""
                 SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
-                WHERE REFERENCED_TABLE_NAME = 'users' AND TABLE_SCHEMA = DATABASE()
+                WHERE REFERENCED_TABLE_NAME = 'users' AND TABLE_CATALOG = current_database()
             """)
         )
         fk_refs = result.fetchall()
         if fk_refs:
             print(f"发现外键引用: {[(r[0], r[1]) for r in fk_refs]}")
             for table_name, constraint_name in fk_refs:
-                await conn.execute(text(f"ALTER TABLE `{table_name}` DROP FOREIGN KEY `{constraint_name}`"))
+                await conn.execute(text(f"ALTER TABLE {table_name} DROP CONSTRAINT {constraint_name}"))
                 print(f"  已删除外键: {table_name}.{constraint_name}")
 
         # 6. 删除旧表并创建新表
@@ -127,17 +128,16 @@ async def migrate():
                 try:
                     await conn.execute(
                         text(f"""
-                            ALTER TABLE `{table_name}`
-                            ADD CONSTRAINT `{table_name}_ibfk_user`
-                            FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+                            ALTER TABLE {table_name}
+                            ADD CONSTRAINT {table_name}_ibfk_user
+                            FOREIGN KEY (user_id) REFERENCES users (id)
                         """)
                     )
                     print(f"  已重建外键: {table_name}.user_id")
                 except Exception as exc:
                     print(f"  重建外键 {table_name} 失败: {exc}")
 
-        # 9. 恢复外键检查
-        await conn.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+        # 9. PostgreSQL 事务提交后外键自动生效
 
     print(f"\n迁移完成！")
     print(f"  - 备份表: users_backup ({backup_count} 条记录)")

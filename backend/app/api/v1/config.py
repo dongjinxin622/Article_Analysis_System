@@ -268,7 +268,7 @@ async def get_service_status():
     return {
         "success": True,
         "services": {
-            "mysql": {"host": settings.MYSQL_HOST, "port": settings.MYSQL_PORT, "status": "configured"},
+            "postgres": {"status": "configured"},
             "milvus": {"host": settings.MILVUS_HOST, "port": settings.MILVUS_PORT, "status": "configured"},
             "redis": {"host": settings.REDIS_HOST, "port": settings.REDIS_PORT, "status": "configured"},
             "grobid": {"url": settings.GROBID_URL, "status": "configured"}

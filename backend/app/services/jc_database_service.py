@@ -1,13 +1,11 @@
 """
 Jc 数据库搜索服务
-负责从云端 MySQL 搜索历史 Jc 数据，进行排名对比
+负责从云端 PostgreSQL 搜索历史 Jc 数据，进行排名对比
 使用 jc_indices_raw 表
 """
-import logging
 import asyncio
-from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime
-import pymysql
+from typing import List, Dict, Any, Optional
+import asyncpg
 from loguru import logger
 
 from backend.app.core.config import settings
@@ -29,22 +27,20 @@ class JcDatabaseService:
         password: str = None,
         database: str = None
     ):
-        self.host = host or settings.MYSQL_HOST
-        self.port = port or settings.MYSQL_PORT
-        self.user = user or settings.MYSQL_USER
-        self.password = password or settings.MYSQL_PASSWORD
-        self.database = database or settings.MYSQL_DATABASE
+        self.host = host or settings.POSTGRES_HOST
+        self.port = port or settings.POSTGRES_PORT
+        self.user = user or settings.POSTGRES_USER
+        self.password = password or settings.POSTGRES_PASSWORD
+        self.database = database or settings.POSTGRES_DATABASE
 
-    def _get_connection(self):
-        """获取 MySQL 连接"""
-        return pymysql.connect(
+    async def _get_connection(self):
+        """获取 PostgreSQL 异步连接"""
+        return await asyncpg.connect(
             host=self.host,
             port=self.port,
             user=self.user,
             password=self.password,
             database=self.database,
-            charset='utf8mb4',
-            cursorclass=pymysql.cursors.DictCursor
         )
 
     async def search_by_conditions(
@@ -67,57 +63,63 @@ class JcDatabaseService:
         angle_tol = angle_tolerance or self.DEFAULT_ANGLE_TOLERANCE
 
         try:
-            conn = self._get_connection()
-            cursor = conn.cursor()
+            conn = await self._get_connection()
 
-            # 构建查询条件 - 使用 jc_indices_raw 表
             conditions = ["jc_value IS NOT NULL"]
+            params = []
+            param_idx = 0
 
-            # 温度条件
             if temperature is not None:
+                param_idx += 1
                 conditions.append(
                     f"temperature_K IS NOT NULL AND "
-                    f"temperature_K >= {temperature - temp_tol} AND "
-                    f"temperature_K <= {temperature + temp_tol}"
+                    f"temperature_K >= ${param_idx} AND "
+                    f"temperature_K <= ${param_idx + 1}"
                 )
+                params.extend([temperature - temp_tol, temperature + temp_tol])
+                param_idx += 1
 
-            # 磁场条件
             if magnetic_field is not None:
+                param_idx += 1
                 conditions.append(
                     f"magnetic_field_T IS NOT NULL AND "
-                    f"magnetic_field_T >= {magnetic_field - field_tol} AND "
-                    f"magnetic_field_T <= {magnetic_field + field_tol}"
+                    f"magnetic_field_T >= ${param_idx} AND "
+                    f"magnetic_field_T <= ${param_idx + 1}"
                 )
+                params.extend([magnetic_field - field_tol, magnetic_field + field_tol])
+                param_idx += 1
 
-            # 角度条件：NULL可接受，非NULL需满足（180度等效）
             if angle is not None:
+                param_idx += 1
                 angle_equiv = angle % 180
                 conditions.append(
                     f"(angle_deg IS NULL OR "
-                    f"ABS(((angle_deg % 180) + 180) % 180 - {angle_equiv}) <= {angle_tol})"
+                    f"ABS(((angle_deg % 180) + 180) % 180 - ${param_idx}) <= ${param_idx + 1})"
                 )
+                params.extend([angle_equiv, angle_tol])
+                param_idx += 1
 
-            # 最小 Jc 筛选
             if min_jc is not None:
-                conditions.append(f"jc_value >= {min_jc}")
+                param_idx += 1
+                conditions.append(f"jc_value >= ${param_idx}")
+                params.append(min_jc)
 
+            param_idx += 1
             where_clause = " AND ".join(conditions)
 
             sql = f"""
-                SELECT DOI, jc_value, jc_unit, temperature_K, magnetic_field_T, angle_deg
+                SELECT "DOI", jc_value, jc_unit, temperature_K, magnetic_field_T, angle_deg
                 FROM jc_indices_raw
                 WHERE {where_clause}
                 ORDER BY jc_value DESC
-                LIMIT {top_k}
+                LIMIT ${param_idx}
             """
+            params.append(top_k)
 
             logger.info(f"执行 Jc 搜索: 温度={temperature}, 磁场={magnetic_field}, 角度={angle}")
-            cursor.execute(sql)
+            rows = await conn.fetch(sql, *params)
+            await conn.close()
 
-            rows = cursor.fetchall()
-            conn.close()
-
-            # 处理结果
             results = []
             for row in rows:
                 results.append({
@@ -163,28 +165,24 @@ class JcDatabaseService:
         field_tolerance: float = None,
         angle_tolerance: float = None
     ) -> Dict[str, Any]:
-        """
-        按DOI进行Jc排名对比
-        """
+        """按DOI进行Jc排名对比"""
         temp_tol = temp_tolerance or self.DEFAULT_TEMP_TOLERANCE
         field_tol = field_tolerance or self.DEFAULT_FIELD_TOLERANCE
         angle_tol = angle_tolerance or self.DEFAULT_ANGLE_TOLERANCE
 
         try:
-            conn = self._get_connection()
-            cursor = conn.cursor()
+            conn = await self._get_connection()
 
             # 1. 获取目标论文的 Jc 数据
             target_sql = """
-                SELECT DOI, jc_value, temperature_K, magnetic_field_T, angle_deg
+                SELECT "DOI", jc_value, temperature_K, magnetic_field_T, angle_deg
                 FROM jc_indices_raw
-                WHERE DOI = %s
+                WHERE "DOI" = $1
             """
-            cursor.execute(target_sql, (target_doi,))
-            target_rows = cursor.fetchall()
+            target_rows = await conn.fetch(target_sql, target_doi)
 
             if not target_rows:
-                conn.close()
+                await conn.close()
                 return {
                     "success": False,
                     "message": f"未找到 DOI: {target_doi} 的 Jc 数据",
@@ -197,48 +195,59 @@ class JcDatabaseService:
 
             # 2. 搜索相同条件的所有记录
             conditions = ["jc_value IS NOT NULL"]
+            params = []
+            param_idx = 0
+
             if temperature is not None:
+                param_idx += 1
                 conditions.append(
                     f"temperature_K IS NOT NULL AND "
-                    f"temperature_K >= {temperature - temp_tol} AND "
-                    f"temperature_K <= {temperature + temp_tol}"
+                    f"temperature_K >= ${param_idx} AND "
+                    f"temperature_K <= ${param_idx + 1}"
                 )
+                params.extend([temperature - temp_tol, temperature + temp_tol])
+                param_idx += 1
+
             if magnetic_field is not None:
+                param_idx += 1
                 conditions.append(
                     f"magnetic_field_T IS NOT NULL AND "
-                    f"magnetic_field_T >= {magnetic_field - field_tol} AND "
-                    f"magnetic_field_T <= {magnetic_field + field_tol}"
+                    f"magnetic_field_T >= ${param_idx} AND "
+                    f"magnetic_field_T <= ${param_idx + 1}"
                 )
+                params.extend([magnetic_field - field_tol, magnetic_field + field_tol])
+                param_idx += 1
+
             if angle is not None:
+                param_idx += 1
                 angle_equiv = angle % 180
                 conditions.append(
                     f"(angle_deg IS NULL OR "
-                    f"ABS(((angle_deg % 180) + 180) % 180 - {angle_equiv}) <= {angle_tol})"
+                    f"ABS(((angle_deg % 180) + 180) % 180 - ${param_idx}) <= ${param_idx + 1})"
                 )
+                params.extend([angle_equiv, angle_tol])
+                param_idx += 1
 
             where_clause = " AND ".join(conditions)
 
             search_sql = f"""
-                SELECT DOI, MAX(jc_value) as jc_max
+                SELECT "DOI", MAX(jc_value) as jc_max
                 FROM jc_indices_raw
                 WHERE {where_clause}
-                GROUP BY DOI
+                GROUP BY "DOI"
                 ORDER BY jc_max DESC
             """
 
-            cursor.execute(search_sql)
-            all_rows = cursor.fetchall()
+            rows = await conn.fetch(search_sql, *params)
+            all_rows = rows
 
             # 3. 计算排名
             doi_jc_list = [
                 {"doi": r.get("DOI", ""), "jc_max": float(r.get("jc_max", 0)) if r.get("jc_max") else 0}
                 for r in all_rows
             ]
-
-            # 排序
             doi_jc_list.sort(key=lambda x: x["jc_max"], reverse=True)
 
-            # 找到目标排名
             target_rank = None
             for i, item in enumerate(doi_jc_list):
                 if item["doi"] == target_doi:
@@ -248,14 +257,13 @@ class JcDatabaseService:
             # 如果在条件范围内找不到目标DOI，回退到无条件排名
             if target_rank is None:
                 fallback_sql = """
-                    SELECT DOI, MAX(jc_value) as jc_max
+                    SELECT "DOI", MAX(jc_value) as jc_max
                     FROM jc_indices_raw
                     WHERE jc_value IS NOT NULL
-                    GROUP BY DOI
+                    GROUP BY "DOI"
                     ORDER BY jc_max DESC
                 """
-                cursor.execute(fallback_sql)
-                fallback_rows = cursor.fetchall()
+                fallback_rows = await conn.fetch(fallback_sql)
                 fallback_list = [
                     {"doi": r.get("DOI", ""), "jc_max": float(r.get("jc_max", 0)) if r.get("jc_max") else 0}
                     for r in fallback_rows
@@ -273,9 +281,8 @@ class JcDatabaseService:
                 best_jc_max = doi_jc_list[0]["jc_max"] if doi_jc_list else 0
                 top_10 = doi_jc_list[:10]
 
-            conn.close()
+            await conn.close()
 
-            # 百分位排名
             rank_percentile = None
             if target_rank and total_papers > 1:
                 rank_percentile = round(1 - (target_rank - 1) / total_papers, 4)
@@ -309,23 +316,23 @@ class JcDatabaseService:
             }
 
     async def get_jc_statistics(self) -> Dict[str, Any]:
-        """
-        获取 Jc 数据库统计信息
-        只返回总记录数和唯一DOI数
-        """
+        """获取 Jc 数据库统计信息"""
         try:
-            conn = self._get_connection()
-            cursor = conn.cursor()
+            conn = await self._get_connection()
 
             # 统计总数
-            cursor.execute("SELECT COUNT(*) as total FROM jc_indices_raw WHERE jc_value IS NOT NULL")
-            total = cursor.fetchone().get("total", 0)
+            row = await conn.fetchrow(
+                'SELECT COUNT(*) as total FROM jc_indices_raw WHERE jc_value IS NOT NULL'
+            )
+            total = row.get("total", 0) if row else 0
 
             # 统计唯一 DOI 数
-            cursor.execute("SELECT COUNT(DISTINCT DOI) as doi_count FROM jc_indices_raw")
-            doi_count = cursor.fetchone().get("doi_count", 0)
+            row = await conn.fetchrow(
+                'SELECT COUNT(DISTINCT "DOI") as doi_count FROM jc_indices_raw'
+            )
+            doi_count = row.get("doi_count", 0) if row else 0
 
-            conn.close()
+            await conn.close()
 
             return {
                 "success": True,
@@ -349,39 +356,47 @@ class JcDatabaseService:
         temperature: Optional[float] = None,
         magnetic_field: Optional[float] = None
     ) -> List[Dict[str, Any]]:
-        """
-        获取 Jc 排名靠前的 DOI 列表
-        """
+        """获取 Jc 排名靠前的 DOI 列表"""
         try:
-            conn = self._get_connection()
-            cursor = conn.cursor()
+            conn = await self._get_connection()
 
             conditions = ["jc_value IS NOT NULL"]
+            params = []
+            param_idx = 0
+
             if temperature is not None:
+                param_idx += 1
                 conditions.append(
-                    f"temperature_K >= {temperature - 10} AND temperature_K <= {temperature + 10}"
+                    f"temperature_K >= ${param_idx} AND temperature_K <= ${param_idx + 1}"
                 )
+                params.extend([temperature - 10, temperature + 10])
+                param_idx += 1
+
             if magnetic_field is not None:
+                param_idx += 1
                 conditions.append(
-                    f"magnetic_field_T >= {magnetic_field - 2} AND magnetic_field_T <= {magnetic_field + 2}"
+                    f"magnetic_field_T >= ${param_idx} AND magnetic_field_T <= ${param_idx + 1}"
                 )
+                params.extend([magnetic_field - 2, magnetic_field + 2])
+                param_idx += 1
 
             where_clause = " AND ".join(conditions)
+            param_idx += 1
 
             sql = f"""
-                SELECT DOI, MAX(jc_value) as jc_max,
+                SELECT "DOI", MAX(jc_value) as jc_max,
                        AVG(temperature_K) as avg_temp,
                        AVG(magnetic_field_T) as avg_field
                 FROM jc_indices_raw
                 WHERE {where_clause}
-                GROUP BY DOI
+                GROUP BY "DOI"
                 ORDER BY jc_max DESC
-                LIMIT {top_k}
+                LIMIT ${param_idx}
             """
+            params.append(top_k)
 
-            cursor.execute(sql)
-            rows = cursor.fetchall()
-            conn.close()
+            rows = await conn.fetch(sql, *params)
+            await conn.close()
 
             results = []
             for i, row in enumerate(rows):

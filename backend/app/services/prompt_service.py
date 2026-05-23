@@ -19,17 +19,16 @@ logger = logging.getLogger(__name__)
 async def migrate_prompt_table():
     """
     数据迁移：为 prompt_templates 表添加 user_id 列和复合唯一约束
-
-    幂等安全：通过 information_schema 检查列是否存在
+    PostgreSQL 版本。幂等安全。
     """
     try:
         async with engine.connect() as conn:
-            # 检查 user_id 列是否已存在
+            # 检查 user_id 列是否已存在（PostgreSQL information_schema）
             result = await conn.execute(text(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS "
-                "WHERE TABLE_SCHEMA = DATABASE() "
-                "AND TABLE_NAME = 'prompt_templates' "
-                "AND COLUMN_NAME = 'user_id'"
+                "SELECT COUNT(*) FROM information_schema.columns "
+                "WHERE table_catalog = current_database() "
+                "AND table_name = 'prompt_templates' "
+                "AND column_name = 'user_id'"
             ))
             exists = result.scalar() > 0
 
@@ -38,12 +37,12 @@ async def migrate_prompt_table():
 
                 # 添加 user_id 列（可空）
                 await conn.execute(text(
-                    "ALTER TABLE prompt_templates ADD COLUMN user_id INT DEFAULT NULL"
+                    "ALTER TABLE prompt_templates ADD COLUMN user_id INTEGER DEFAULT NULL"
                 ))
 
-                # 添加索引
+                # 添加索引（PostgreSQL 语法）
                 await conn.execute(text(
-                    "ALTER TABLE prompt_templates ADD INDEX ix_prompt_user_id (user_id)"
+                    "CREATE INDEX ix_prompt_user_id ON prompt_templates (user_id)"
                 ))
 
                 # 添加外键
@@ -54,10 +53,10 @@ async def migrate_prompt_table():
                 except Exception as e:
                     logger.warning(f"添加外键约束失败（可能已存在）: {e}")
 
-                # 移除旧的 name 唯一索引（可能是 name 或 ix_prompt_templates_name）
-                for idx_name in ["name", "ix_prompt_templates_name"]:
+                # 移除旧的 name 唯一索引
+                for idx_name in ["ix_prompt_templates_name", "prompt_templates_name_key"]:
                     try:
-                        await conn.execute(text(f"ALTER TABLE prompt_templates DROP INDEX {idx_name}"))
+                        await conn.execute(text(f"DROP INDEX IF EXISTS {idx_name}"))
                         logger.info(f"已移除旧索引: {idx_name}")
                     except Exception as e:
                         logger.warning(f"移除旧索引 {idx_name} 失败（可能不存在）: {e}")
@@ -73,28 +72,28 @@ async def migrate_prompt_table():
                 await conn.commit()
                 logger.info("prompt_templates 表迁移完成：已添加 user_id 列")
             else:
-                # user_id 列已存在，确保旧的唯一索引已被移除
                 logger.info("prompt_templates 表已包含 user_id 列，检查旧索引...")
 
-                # 检查旧的唯一索引是否仍然存在
+                # PostgreSQL：检查 name 列上的旧唯一约束
                 check = await conn.execute(text(
-                    "SELECT INDEX_NAME FROM information_schema.STATISTICS "
-                    "WHERE TABLE_SCHEMA = DATABASE() "
-                    "AND TABLE_NAME = 'prompt_templates' "
-                    "AND COLUMN_NAME = 'name' "
-                    "AND NON_UNIQUE = 0 "
-                    "AND INDEX_NAME != 'uix_prompt_name_user'"
+                    "SELECT constraint_name FROM information_schema.table_constraints "
+                    "WHERE table_catalog = current_database() "
+                    "AND table_name = 'prompt_templates' "
+                    "AND constraint_type = 'UNIQUE' "
+                    "AND constraint_name != 'uix_prompt_name_user'"
                 ))
-                stale_indexes = [row[0] for row in check.fetchall()]
+                stale_constraints = [row[0] for row in check.fetchall()]
 
-                if stale_indexes:
-                    logger.info(f"发现旧的唯一索引: {stale_indexes}，正在移除...")
-                    for idx_name in stale_indexes:
+                if stale_constraints:
+                    logger.info(f"发现旧的唯一约束: {stale_constraints}，正在移除...")
+                    for name in stale_constraints:
                         try:
-                            await conn.execute(text(f"ALTER TABLE prompt_templates DROP INDEX {idx_name}"))
-                            logger.info(f"已移除旧索引: {idx_name}")
+                            await conn.execute(text(
+                                f"ALTER TABLE prompt_templates DROP CONSTRAINT IF EXISTS {name}"
+                            ))
+                            logger.info(f"已移除旧约束: {name}")
                         except Exception as e:
-                            logger.warning(f"移除旧索引 {idx_name} 失败: {e}")
+                            logger.warning(f"移除旧约束 {name} 失败: {e}")
                     await conn.commit()
                 else:
                     logger.info("未发现需要清理的旧索引")

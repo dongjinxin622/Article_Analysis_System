@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     g++ \
     libpoppler-cpp-dev \
     pkg-config \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件
