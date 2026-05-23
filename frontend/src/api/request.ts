@@ -14,6 +14,60 @@ const api: AxiosInstance = axios.create({
   }
 })
 
+// Token 刷新机制
+let isRefreshing = false
+let refreshSubscribers: Array<(token: string) => void> = []
+let refreshFn: (() => Promise<string | null>) | null = null
+
+export function setupAuthRefresh(fn: () => Promise<string | null>) {
+  refreshFn = fn
+}
+
+function onTokenRefreshed(newToken: string) {
+  refreshSubscribers.forEach(cb => cb(newToken))
+  refreshSubscribers = []
+}
+
+function addRefreshSubscriber(cb: (token: string) => void) {
+  refreshSubscribers.push(cb)
+}
+
+async function refreshAndRetry(originalConfig: AxiosRequestConfig): Promise<any> {
+  if (!isRefreshing) {
+    isRefreshing = true
+    try {
+      const newToken = await refreshFn?.()
+      if (newToken) {
+        localStorage.setItem('token', newToken)
+        onTokenRefreshed(newToken)
+        // 重试原请求
+        if (originalConfig.headers) {
+          originalConfig.headers.Authorization = `Bearer ${newToken}`
+        }
+        return api.request(originalConfig)
+      }
+    } catch {
+      // 刷新失败，清除所有凭据
+      localStorage.removeItem('token')
+      localStorage.removeItem('refresh_token')
+      router.push('/login')
+      return Promise.reject(new Error('token 刷新失败'))
+    } finally {
+      isRefreshing = false
+    }
+  } else {
+    // 等待正在进行的刷新完成
+    return new Promise(resolve => {
+      addRefreshSubscriber((newToken: string) => {
+        if (originalConfig.headers) {
+          originalConfig.headers.Authorization = `Bearer ${newToken}`
+        }
+        resolve(api.request(originalConfig))
+      })
+    })
+  }
+}
+
 // 请求拦截器
 api.interceptors.request.use(
   (config) => {
@@ -44,8 +98,8 @@ api.interceptors.response.use(
     })
     return response.data
   },
-  (error) => {
-    const { response } = error
+  async (error) => {
+    const { response, config } = error
 
     // 记录错误日志
     log.error(`响应错误: ${error.config?.method?.toUpperCase()} ${error.config?.url}`, {
@@ -58,10 +112,13 @@ api.interceptors.response.use(
     if (response) {
       switch (response.status) {
         case 401:
-          ElMessage.error('登录已过期，请重新登录')
-          localStorage.removeItem('token')
-          router.push('/login')
-          break
+          // 排除 login/refresh 请求本身，避免死循环
+          if (config.url?.includes('/users/login') || config.url?.includes('/users/refresh')) {
+            ElMessage.error(response.data?.detail || '认证失败')
+            break
+          }
+          // 尝试自动刷新 token
+          return refreshAndRetry(config)
         case 403:
           ElMessage.error('没有权限执行此操作')
           break

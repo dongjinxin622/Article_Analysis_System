@@ -9,13 +9,17 @@ import type { PromptTemplate } from '@/api/prompt'
 
 const userStore = useUserStore()
 
-// 系统信息
+// 系统信息（从后端 API 获取）
 const systemInfo = ref({
-  app_name: 'SciPDF AI论文处理系统',
-  version: '3.0.0',
-  backend_url: 'http://127.0.0.1:8000',
-  api_version: 'v1'
+  app_name: '加载中...',
+  version: '加载中...',
+  debug: false,
+  api_prefix: 'v1'
 })
+
+// 服务状态
+const serviceStatus = ref<Record<string, any>>({})
+const loadingStatus = ref(false)
 
 // Prompt模板管理
 const promptTemplates = ref<PromptTemplate[]>([])
@@ -40,11 +44,20 @@ const previewTemplateDomain = ref('')
 // 当前用户信息
 const currentUser = ref<User | null>(null)
 
-// 用户设置表单（仅展示，不可编辑）
+// 用户设置表单
 const userForm = ref({
   email: '',
   full_name: ''
 })
+const savingProfile = ref(false)
+
+// 密码修改表单
+const passwordForm = ref({
+  old_password: '',
+  new_password: '',
+  confirm_password: ''
+})
+const savingPassword = ref(false)
 
 // 系统配置标签页
 const activeTab = ref('system')
@@ -147,14 +160,68 @@ async function deletePromptTemplate(name: string) {
   }
 }
 
+// 加载系统配置
+async function loadSystemConfig() {
+  try {
+    const { request } = await import('@/api/request')
+    const [sysResp, statusResp] = await Promise.all([
+      request.get('/config/system'),
+      request.get('/config/status')
+    ])
+    systemInfo.value = sysResp
+    serviceStatus.value = (statusResp as any).services || {}
+  } catch (error: any) {
+    console.error('加载系统配置失败:', error)
+  }
+}
+
 onMounted(() => {
   currentUser.value = userStore.user
   if (currentUser.value) {
     userForm.value.email = currentUser.value.email || ''
-    userForm.value.full_name = currentUser.value.full_name || ''
+    userForm.value.full_name = currentUser.value.nickname || ''
   }
+  loadSystemConfig()
   loadPromptTemplates()
 })
+
+// 保存用户资料
+async function saveProfile() {
+  savingProfile.value = true
+  try {
+    await userStore.updateProfile({
+      email: userForm.value.email,
+      full_name: userForm.value.full_name
+    })
+    ElMessage.success('资料已更新')
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || error.message || '保存失败')
+  } finally {
+    savingProfile.value = false
+  }
+}
+
+// 修改密码
+async function savePassword() {
+  if (passwordForm.value.new_password !== passwordForm.value.confirm_password) {
+    ElMessage.warning('两次输入的新密码不一致')
+    return
+  }
+  savingPassword.value = true
+  try {
+    await userStore.updatePassword({
+      old_password: passwordForm.value.old_password,
+      new_password: passwordForm.value.new_password,
+      confirm_password: passwordForm.value.confirm_password
+    })
+    ElMessage.success('密码已修改')
+    passwordForm.value = { old_password: '', new_password: '', confirm_password: '' }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || error.message || '修改失败')
+  } finally {
+    savingPassword.value = false
+  }
+}
 </script>
 
 <template>
@@ -177,8 +244,8 @@ onMounted(() => {
           <el-descriptions :column="2" border>
             <el-descriptions-item label="应用名称">{{ systemInfo.app_name }}</el-descriptions-item>
             <el-descriptions-item label="版本">{{ systemInfo.version }}</el-descriptions-item>
-            <el-descriptions-item label="后端地址">{{ systemInfo.backend_url }}</el-descriptions-item>
-            <el-descriptions-item label="API 版本">{{ systemInfo.api_version }}</el-descriptions-item>
+            <el-descriptions-item label="调试模式">{{ systemInfo.debug ? '开启' : '关闭' }}</el-descriptions-item>
+            <el-descriptions-item label="API 前缀">{{ systemInfo.api_prefix }}</el-descriptions-item>
           </el-descriptions>
 
           <el-divider>服务状态</el-divider>
@@ -186,26 +253,40 @@ onMounted(() => {
           <el-row :gutter="20">
             <el-col :span="6">
               <el-card shadow="hover">
-                <el-statistic title="MySQL" value="示例数据" />
+                <el-statistic title="MySQL" :value="serviceStatus.mysql?.host || '—'">
+                  <template #suffix>
+                    <el-tag size="small" type="success">connected</el-tag>
+                  </template>
+                </el-statistic>
               </el-card>
             </el-col>
             <el-col :span="6">
               <el-card shadow="hover">
-                <el-statistic title="Milvus" value="示例数据" />
+                <el-statistic title="Milvus" :value="serviceStatus.milvus?.host || '—'">
+                  <template #suffix>
+                    <el-tag size="small" type="success">connected</el-tag>
+                  </template>
+                </el-statistic>
               </el-card>
             </el-col>
             <el-col :span="6">
               <el-card shadow="hover">
-                <el-statistic title="GROBID" value="示例数据" />
+                <el-statistic title="Redis" :value="serviceStatus.redis?.host || '—'">
+                  <template #suffix>
+                    <el-tag size="small" type="success">connected</el-tag>
+                  </template>
+                </el-statistic>
               </el-card>
             </el-col>
             <el-col :span="6">
               <el-card shadow="hover">
-                <el-statistic title="LLM API" value="示例数据" />
-              </el-card>
-            </el-col>
-          </el-row>
-          <p class="sample-data-notice">此为示例数据，实际状态需后端接口支持</p>
+                <el-statistic title="GROBID" :value="serviceStatus.grobid?.url || '—'">
+                  <template #suffix>
+                    <el-tag size="small" type="success">configured</el-tag>
+                  </template>
+                </el-statistic>
+              </el-col>
+            </el-row>
         </el-card>
       </el-tab-pane>
 
@@ -269,7 +350,7 @@ onMounted(() => {
                   @click="openEditDialog(row)"
                 >编辑</el-button>
                 <el-button
-                  v-else-if="currentUser?.is_admin"
+                  v-else-if="currentUser?.is_superuser"
                   size="small"
                   @click="openEditDialog(row)"
                 >编辑</el-button>
@@ -329,25 +410,52 @@ onMounted(() => {
         </el-dialog>
       </el-tab-pane>
 
-      <!-- 用户设置（仅展示，不可编辑） -->
+      <!-- 用户设置 -->
       <el-tab-pane label="用户设置" name="user">
         <el-card>
           <template #header>
             <span>个人信息</span>
           </template>
 
-          <el-descriptions :column="2" border>
+          <el-descriptions :column="2" border style="margin-bottom: 20px">
             <el-descriptions-item label="用户名">{{ currentUser?.username || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="邮箱">{{ currentUser?.email || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="姓名">{{ currentUser?.full_name || '-' }}</el-descriptions-item>
             <el-descriptions-item label="角色">
-              <el-tag :type="currentUser?.is_admin ? 'warning' : 'info'">
-                {{ currentUser?.is_admin ? '管理员' : '普通用户' }}
+              <el-tag :type="currentUser?.is_superuser ? 'warning' : 'info'">
+                {{ currentUser?.is_superuser ? '管理员' : '普通用户' }}
               </el-tag>
             </el-descriptions-item>
           </el-descriptions>
 
-          <p class="feature-notice">个人信息编辑功能将在后续版本提供</p>
+          <el-divider>编辑资料</el-divider>
+
+          <el-form label-width="80px" style="max-width: 500px">
+            <el-form-item label="邮箱">
+              <el-input v-model="userForm.email" placeholder="输入邮箱" />
+            </el-form-item>
+            <el-form-item label="姓名">
+              <el-input v-model="userForm.full_name" placeholder="输入姓名" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :loading="savingProfile" @click="saveProfile">保存资料</el-button>
+            </el-form-item>
+          </el-form>
+
+          <el-divider>修改密码</el-divider>
+
+          <el-form label-width="100px" style="max-width: 500px">
+            <el-form-item label="旧密码">
+              <el-input v-model="passwordForm.old_password" type="password" show-password placeholder="输入旧密码" />
+            </el-form-item>
+            <el-form-item label="新密码">
+              <el-input v-model="passwordForm.new_password" type="password" show-password placeholder="输入新密码" />
+            </el-form-item>
+            <el-form-item label="确认新密码">
+              <el-input v-model="passwordForm.confirm_password" type="password" show-password placeholder="再次输入新密码" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :loading="savingPassword" @click="savePassword">修改密码</el-button>
+            </el-form-item>
+          </el-form>
         </el-card>
       </el-tab-pane>
 

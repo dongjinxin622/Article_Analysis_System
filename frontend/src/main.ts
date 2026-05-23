@@ -9,6 +9,7 @@ import './assets/styles/common.css'
 
 import App from './App.vue'
 import router from './router'
+import { setupAuthRefresh } from './api/request'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -23,3 +24,11 @@ app.use(router)
 app.use(ElementPlus, { size: 'default', zIndex: 3000 })
 
 app.mount('#app')
+
+// 初始化 Token 自动刷新机制（在 pinia 激活后）
+import { useUserStore } from '@/stores'
+const userStore = useUserStore()
+setupAuthRefresh(async () => {
+  const success = await userStore.refreshAccessToken()
+  return success ? userStore.token : null
+})

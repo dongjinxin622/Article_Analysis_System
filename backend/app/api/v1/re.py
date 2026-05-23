@@ -10,7 +10,8 @@ import tempfile
 import os
 
 from backend.app.schemas.re import RERequest, REResponse, REResultDetail, RelationInfo
-from backend.app.api.deps import get_db, get_current_user_required
+from backend.app.api.deps import get_db
+from backend.app.api.deps_user import get_current_user_required
 from backend.app.services.re_service import process_re_for_ner, get_re_result, load_re_relations, get_re_by_ner_id
 from backend.app.services.prompt_service import get_prompt_service
 from backend.app.models.user import User

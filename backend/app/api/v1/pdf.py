@@ -8,7 +8,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 from backend.app.schemas.paper import PaperUploadResponse, ResultListResponse, ResultDetail, ResultListItem
-from backend.app.api.deps import get_db, get_current_user_required
+from backend.app.api.deps import get_db
+from backend.app.api.deps_user import get_current_user_required
 from backend.app.services.pdf_service import process_pdf, get_processing_result, delete_processing_result
 from backend.app.services.storage_service import get_storage_service
 from backend.app.models.user import User

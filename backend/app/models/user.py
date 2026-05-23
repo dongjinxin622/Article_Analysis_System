@@ -1,31 +1,30 @@
 """
 用户数据库模型
 """
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean
+from datetime import datetime, timezone
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import relationship
 
 from backend.app.models.base import Base
+from backend.app.models.base_model import BaseModelMixin
 
 
-class User(Base):
+class User(Base, BaseModelMixin):
     """用户表"""
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    username = Column(String(50), unique=True, nullable=False, index=True)
-    hashed_password = Column(String(255), nullable=False)  # 匹配数据库字段名
-    email = Column(String(100), unique=True, nullable=True)
-    full_name = Column(String(100))
-    is_active = Column(Boolean, default=True)
-    is_admin = Column(Boolean, default=False)  # 直接使用 is_admin
-    last_login = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    username = Column(String(64), unique=True, nullable=False, index=True)
+    nickname = Column(String(64), nullable=True)
+    email = Column(String(255), unique=True, nullable=True, index=True)
+    avatar_url = Column(String(512), nullable=True)
+    password_hash = Column(String(255), nullable=False)
+    is_superuser = Column(Boolean, default=False)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
 
-    # 关联关系
-    processing_results = relationship("ProcessingResult", backref="user")
-    ner_results = relationship("NERResult", backref="user")
-    re_results = relationship("REResult", backref="user")
-    batch_tasks = relationship("BatchTask", backref="user")
+    # 关联关系（保留 PromptTemplate 的 back_populates 引用）
     prompt_templates = relationship("PromptTemplate", back_populates="user")
+
+    async def update_last_login(self) -> None:
+        """更新最近登录时间"""
+        self.last_login_at = datetime.now(timezone.utc)

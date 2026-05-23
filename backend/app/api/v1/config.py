@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 import logging
 
-from backend.app.api.deps import get_db, get_current_user_required
+from backend.app.api.deps import get_db
+from backend.app.api.deps_user import get_current_user_required
 from backend.app.services.prompt_service import get_prompt_service
 
 router = APIRouter()
@@ -178,7 +179,7 @@ async def update_prompt_template(
         template_user_id = template.get("user_id")
         if template_user_id is None:
             # 共享模板：仅管理员可编辑
-            if not user.is_admin:
+            if not user.is_superuser:
                 raise HTTPException(status_code=403, detail="不能编辑系统共享模板，仅管理员可操作")
         elif template_user_id != user.id:
             # 其他用户的模板

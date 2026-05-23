@@ -11,7 +11,8 @@ import os
 
 from backend.app.schemas.ner import NERRequest, NERResponse, NERResultDetail, NERBatchRequest, NERBatchResponse, EntityInfo, NERResultListItem, NERResultListResponse
 from backend.app.schemas.paper import ProcessingStatus
-from backend.app.api.deps import get_db, get_current_user_required
+from backend.app.api.deps import get_db
+from backend.app.api.deps_user import get_current_user_required
 from backend.app.services.ner_service import process_ner_for_result, get_ner_result, load_ner_entities
 from backend.app.services.prompt_service import get_prompt_service
 from backend.app.models.user import User

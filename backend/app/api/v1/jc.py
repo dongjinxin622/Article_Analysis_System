@@ -7,7 +7,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from backend.app.services.jc_database_service import get_jc_db_service
-from backend.app.api.deps import get_current_user_required
+from backend.app.api.deps_user import get_current_user_required
 
 router = APIRouter(prefix="/jc")
 

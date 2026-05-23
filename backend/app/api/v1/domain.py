@@ -14,7 +14,8 @@ from backend.app.schemas.domain import (
     JcSearchRequest, JcSearchResponse,
     JcCompareRequest, JcCompareResponse
 )
-from backend.app.api.deps import get_db, get_current_user_required
+from backend.app.api.deps import get_db
+from backend.app.api.deps_user import get_current_user_required
 from backend.app.models import NERResult, REResult, TechRoute, ExpScheme
 from backend.app.domain.registry import DomainRegistry
 from backend.app.domain.material.analyzer import REBCOAnalyzer

@@ -15,7 +15,8 @@ from pathlib import Path
 from datetime import datetime
 
 from backend.app.schemas.batch import BatchTaskRequest, BatchTaskResponse, BatchTaskDetail, TaskProgress, BatchTaskListResponse
-from backend.app.api.deps import get_db, get_current_user_required
+from backend.app.api.deps import get_db
+from backend.app.api.deps_user import get_current_user_required
 from backend.app.services.batch_service import (
     create_batch_task,
     get_batch_task_status,

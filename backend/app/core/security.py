@@ -1,55 +1,27 @@
 """
-安全认证模块 - JWT Token 处理
+安全认证模块 - 密码哈希与验证（SHA-256 + bcrypt 两级哈希）
 """
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-from jose import JWTError, jwt
+import hashlib
 import bcrypt
 
-from backend.app.core.config import settings
+BCRYPT_SHA256_PREFIX = "$bcrypt-sha256$"
 
 
-def hash_password(password: str) -> str:
-    """对密码进行哈希处理"""
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed.decode('utf-8')
+def hash_password(raw: str) -> str:
+    """对密码进行 SHA-256 + bcrypt 两级哈希，结果带算法前缀"""
+    sha256_digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    hashed = bcrypt.hashpw(sha256_digest.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    return f"{BCRYPT_SHA256_PREFIX}{hashed}"
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """验证密码"""
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
-
-
-def create_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
-    """创建 JWT Token"""
-    to_encode = data.copy()
-
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-
-    return encoded_jwt
-
-
-def verify_token(token: str) -> Optional[Dict[str, Any]]:
-    """验证 JWT Token"""
+def verify_password(raw: str, hashed: str) -> bool:
+    """验证密码（兼容有前缀和无前缀两种格式）"""
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        return payload
-    except JWTError:
-        return None
-
-
-def create_access_token(user_id: int, username: str) -> str:
-    """创建访问令牌"""
-    token_data = {
-        "sub": str(user_id),
-        "username": username,
-        "type": "access"
-    }
-    return create_token(token_data)
+        sha256_digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        if hashed.startswith(BCRYPT_SHA256_PREFIX):
+            stored = hashed.removeprefix(BCRYPT_SHA256_PREFIX).encode("utf-8")
+            return bcrypt.checkpw(sha256_digest.encode("utf-8"), stored)
+        # 兼容旧格式（无前缀）
+        return bcrypt.checkpw(sha256_digest.encode("utf-8"), hashed.encode("utf-8"))
+    except (ValueError, AttributeError):
+        return False

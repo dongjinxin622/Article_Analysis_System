@@ -23,8 +23,12 @@ from backend.app.services.re_service import load_re_relations
 from backend.app.services.ner_re_pipeline import process_ner_re_pipeline
 from backend.app.services.task_manager import TaskManager
 from backend.app.services.prompt_service import get_prompt_service
-from backend.app.api.deps import get_current_user_required
+from backend.app.api.deps_user import get_current_user_required
 from backend.app.core.config import BASE_DIR
+from backend.app.models.base import get_db_context
+from backend.app.models.comprehensive import ComprehensiveTask
+from datetime import datetime
+from sqlalchemy import select, delete
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -153,6 +157,68 @@ class TaskListResponse(BaseModel):
     tasks: List[TaskListItem]
 
 
+# ========== MySQL 持久化辅助函数 ==========
+
+async def _save_task_to_mysql(task_info: dict):
+    """将任务信息同步写入 MySQL（成功或失败时调用）"""
+    try:
+        async with get_db_context() as db:
+            # 检查是否已存在
+            existing = await db.execute(
+                select(ComprehensiveTask).where(ComprehensiveTask.task_id == task_info["task_id"])
+            )
+            existing_task = existing.scalar_one_or_none()
+
+            now = datetime.now()
+            if existing_task:
+                # 更新
+                existing_task.status = task_info.get("status", existing_task.status)
+                existing_task.progress = task_info.get("progress", existing_task.progress)
+                existing_task.current_step = task_info.get("stage", task_info.get("current_step", ""))
+                existing_task.message = task_info.get("message", "")
+                existing_task.result = task_info.get("result")
+                existing_task.error = task_info.get("error")
+                existing_task.updated_at = now
+                if task_info.get("status") in ("completed", "failed"):
+                    existing_task.completed_at = now
+            else:
+                # 新建
+                new_task = ComprehensiveTask(
+                    task_id=task_info["task_id"],
+                    user_id=task_info["user_id"],
+                    status=task_info.get("status", "pending"),
+                    progress=task_info.get("progress", 0),
+                    current_step=task_info.get("stage", task_info.get("current_step", "")),
+                    message=task_info.get("message", ""),
+                    result=task_info.get("result"),
+                    error=task_info.get("error"),
+                    params=task_info.get("params"),
+                    created_at=datetime.fromtimestamp(task_info.get("created_at", now.timestamp())),
+                    updated_at=now,
+                    completed_at=now if task_info.get("status") in ("completed", "failed") else None
+                )
+                db.add(new_task)
+        logger.info(f"[MySQL] 任务 {task_info['task_id']} 已同步到数据库")
+    except Exception as e:
+        logger.error(f"[MySQL] 同步任务失败: {e}")
+
+
+def _task_info_to_response(task_info: dict) -> TaskStatusResponse:
+    """将任务字典转换为 TaskStatusResponse"""
+    return TaskStatusResponse(
+        task_id=task_info.get("task_id", ""),
+        task_type=task_info.get("task_type", "one_click_analysis"),
+        status=task_info.get("status", "unknown"),
+        progress=task_info.get("progress", 0),
+        current_step=task_info.get("stage", task_info.get("current_step", "")),
+        message=task_info.get("message", ""),
+        result=task_info.get("result"),
+        error=task_info.get("error"),
+        created_at=task_info.get("created_at"),
+        updated_at=task_info.get("updated_at")
+    )
+
+
 # ========== API Endpoints ==========
 
 @router.get("/tasks", response_model=TaskListResponse, summary="获取用户任务列表")
@@ -163,8 +229,11 @@ async def get_user_tasks(
     获取用户的所有任务列表
 
     返回用户创建的所有一键处理任务，包括正在运行和历史任务
+    合并 Redis（活跃/近期任务）和 MySQL（历史持久化任务）
     """
-    tasks = _task_manager.get_user_tasks(user.id)
+    # 从 Redis 获取活跃/近期任务
+    redis_tasks = _task_manager.get_user_tasks(user.id)
+    redis_task_ids = {t.get("task_id") for t in redis_tasks}
 
     task_list = [
         TaskListItem(
@@ -177,8 +246,39 @@ async def get_user_tasks(
             created_at=t.get("created_at"),
             updated_at=t.get("updated_at")
         )
-        for t in tasks
+        for t in redis_tasks
     ]
+
+    # 从 MySQL 补充已过期但持久化的历史任务
+    try:
+        async with get_db_context() as db:
+            result = await db.execute(
+                select(ComprehensiveTask)
+                .where(ComprehensiveTask.user_id == user.id)
+                .order_by(ComprehensiveTask.created_at.desc())
+                .limit(200)
+            )
+            db_tasks = result.scalars().all()
+
+            for db_task in db_tasks:
+                # 跳过已在 Redis 中的任务
+                if db_task.task_id in redis_task_ids:
+                    continue
+                task_list.append(TaskListItem(
+                    task_id=db_task.task_id,
+                    task_type="one_click_analysis",
+                    status=db_task.status,
+                    progress=db_task.progress,
+                    current_step=db_task.current_step or "",
+                    message=db_task.message or "",
+                    created_at=db_task.created_at.timestamp() if db_task.created_at else None,
+                    updated_at=db_task.updated_at.timestamp() if db_task.updated_at else None
+                ))
+    except Exception as e:
+        logger.error(f"[MySQL] 查询历史任务失败: {e}")
+
+    # 按创建时间降序排序
+    task_list.sort(key=lambda x: x.created_at or 0, reverse=True)
 
     return TaskListResponse(total=len(task_list), tasks=task_list)
 
@@ -194,8 +294,36 @@ async def get_task_status(
     - **task_id**: 任务 ID
 
     返回进度、当前步骤、结果（完成时）
+    优先从 Redis 查询，Redis 未命中时回退查询 MySQL
     """
     task_info = _task_manager.get_task_status(task_id)
+
+    # Redis 未命中，尝试从 MySQL 回退查询
+    if task_info.get("status") == "not_found":
+        try:
+            async with get_db_context() as db:
+                result = await db.execute(
+                    select(ComprehensiveTask).where(ComprehensiveTask.task_id == task_id)
+                )
+                db_task = result.scalar_one_or_none()
+                if db_task:
+                    # 将 MySQL 记录转换为响应格式
+                    task_info = {
+                        "task_id": db_task.task_id,
+                        "task_type": "one_click_analysis",
+                        "user_id": db_task.user_id,
+                        "status": db_task.status,
+                        "progress": db_task.progress,
+                        "stage": db_task.current_step,
+                        "message": db_task.message or "",
+                        "result": db_task.result,
+                        "error": db_task.error,
+                        "created_at": db_task.created_at.timestamp() if db_task.created_at else None,
+                        "updated_at": db_task.updated_at.timestamp() if db_task.updated_at else None
+                    }
+                    logger.info(f"[MySQL回退] 任务 {task_id} 从数据库加载")
+        except Exception as e:
+            logger.error(f"[MySQL回退] 查询任务失败: {e}")
 
     if task_info.get("status") == "not_found":
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
@@ -204,18 +332,7 @@ async def get_task_status(
     if task_info.get("user_id") != user.id:
         raise HTTPException(status_code=403, detail="无权访问此任务")
 
-    return TaskStatusResponse(
-        task_id=task_id,
-        task_type=task_info.get("task_type", "one_click_analysis"),
-        status=task_info.get("status", "unknown"),
-        progress=task_info.get("progress", 0),
-        current_step=task_info.get("stage", task_info.get("current_step", "")),
-        message=task_info.get("message", ""),
-        result=task_info.get("result"),
-        error=task_info.get("error"),
-        created_at=task_info.get("created_at"),
-        updated_at=task_info.get("updated_at")
-    )
+    return _task_info_to_response(task_info)
 
 
 @router.delete("/task/{task_id}", summary="删除任务")
@@ -238,6 +355,16 @@ async def delete_task(
         raise HTTPException(status_code=403, detail="无权删除此任务")
 
     _task_manager.delete_task(task_id)
+
+    # 同步删除 MySQL 记录
+    try:
+        async with get_db_context() as db:
+            await db.execute(
+                delete(ComprehensiveTask).where(ComprehensiveTask.task_id == task_id)
+            )
+            logger.info(f"[MySQL] 任务 {task_id} 已从数据库删除")
+    except Exception as e:
+        logger.error(f"[MySQL] 删除任务失败: {e}")
 
     return {"success": True, "message": "任务已删除"}
 
@@ -520,6 +647,10 @@ async def one_click_analyze(
                 result=analysis_result
             )
 
+            # 同步写入 MySQL 持久化
+            task_info = _task_manager.get_task_status(task_id)
+            await _save_task_to_mysql(task_info)
+
             logger.info(f"[一键处理] 任务 {task_id} 完成")
 
         except Exception as e:
@@ -531,6 +662,10 @@ async def one_click_analyze(
                 error=str(e),
                 progress=0
             )
+
+            # 同步写入 MySQL 持久化
+            task_info = _task_manager.get_task_status(task_id)
+            await _save_task_to_mysql(task_info)
 
         finally:
             # 清理临时Prompt文件

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict, Any, Optional
 from loguru import logger
 
-from backend.app.api.deps import get_current_user_required
+from backend.app.api.deps_user import get_current_user_required
 from backend.app.services.task_manager import TaskManager
 from backend.app.schemas.task import (
     TaskStatusResponse, TaskListResponse, TaskCancelResponse,

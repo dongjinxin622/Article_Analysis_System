@@ -4,7 +4,8 @@
 from fastapi import APIRouter, Depends
 
 from backend.app.schemas.batch import BatchExtractionRequest, BatchTaskResponse, HITLCheckpoint
-from backend.app.api.deps import get_db, get_current_user_required
+from backend.app.api.deps import get_db
+from backend.app.api.deps_user import get_current_user_required
 
 router = APIRouter()
 

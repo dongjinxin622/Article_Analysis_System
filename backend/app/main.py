@@ -115,6 +115,11 @@ async def lifespan(app: FastAPI):
     logger.info("数据目录初始化完成")
     logger.info("数据库表初始化完成")
 
+    # 初始化 Redis 连接
+    from backend.app.core.redis_client import get_redis, close_redis
+    await get_redis()
+    logger.info("Redis 连接初始化完成")
+
     # Prompt模板表数据迁移（添加user_id列）
     from backend.app.services.prompt_service import migrate_prompt_table
     await migrate_prompt_table()
@@ -125,6 +130,13 @@ async def lifespan(app: FastAPI):
     imported_count = await prompt_service.seed_default_prompts()
     logger.info(f"已导入 {imported_count} 个默认Prompt模板")
 
+    # 确保默认管理员存在
+    from backend.app.models.base import AsyncSessionLocal
+    from backend.app.services.user_service import ensure_default_admin
+    async with AsyncSessionLocal() as session:
+        await ensure_default_admin(session)
+    logger.info("默认管理员检查完成")
+
     # 初始化领域分析器
     rebco_analyzer = REBCOAnalyzer()
     DomainRegistry.register('rebco', rebco_analyzer)
@@ -133,6 +145,8 @@ async def lifespan(app: FastAPI):
     yield
 
     # 关闭时执行
+    from backend.app.core.redis_client import close_redis
+    await close_redis()
     logger.info("应用关闭")
 
 
@@ -143,8 +157,42 @@ app = FastAPI(
     description="基于AI的科学论文PDF处理与分析系统 - v3 重构版",
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    swagger_ui_parameters={
+        "persistAuthorization": True,  # Token 在页面刷新后保留
+    },
 )
+
+
+# 自定义 OpenAPI Schema，添加 Bearer JWT 认证支持
+def custom_openapi():
+    """为 Swagger UI 注入 Bearer JWT 安全方案"""
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    from fastapi.openapi.utils import get_openapi
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    openapi_schema["components"] = openapi_schema.get("components", {})
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "输入 JWT Access Token（登录接口返回的 access_token）",
+        }
+    }
+    # 全局安全方案（各路由可通过 dependencies 覆盖）
+    openapi_schema["security"] = [{"BearerAuth": []}]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 # 配置CORS中间件
 app.add_middleware(

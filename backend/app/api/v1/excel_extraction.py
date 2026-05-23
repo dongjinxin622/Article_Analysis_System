@@ -18,7 +18,7 @@ from sqlalchemy import select, and_
 from backend.app.models.base import AsyncSessionLocal, get_db
 from backend.app.models.excel_extraction import ExcelExtractionTask, ExcelExtractionRow, ExcelExtractionSession
 from backend.app.models.user import User
-from backend.app.api.deps import get_current_user_required
+from backend.app.api.deps_user import get_current_user_required
 from backend.app.schemas.excel_extraction import (
     ExcelExtractionTaskStatus, RowStatus,
     UploadPreviewResponse, TaskCreateResponse, TaskDetailResponse, TaskListResponse,
@@ -396,11 +396,28 @@ async def list_tasks(
     page_size: int = Query(20, ge=1, le=100),
     user: User = Depends(get_current_user_required)
 ):
-    """获取用户任务列表"""
+    """获取用户任务列表（取消超过24小时的任务自动隐藏）"""
+    from sqlalchemy import or_, and_
+    from datetime import timedelta
+
+    cutoff = datetime.now() - timedelta(hours=24)
+
     async with AsyncSessionLocal() as session:
+        # 查询条件：用户的任务，排除已取消且超过24小时的
+        base_condition = and_(
+            ExcelExtractionTask.user_id == user.id,
+            or_(
+                ExcelExtractionTask.status != ExcelExtractionTaskStatus.CANCELLED.value,
+                and_(
+                    ExcelExtractionTask.status == ExcelExtractionTaskStatus.CANCELLED.value,
+                    ExcelExtractionTask.updated_at >= cutoff
+                )
+            )
+        )
+
         result = await session.execute(
             select(ExcelExtractionTask)
-            .where(ExcelExtractionTask.user_id == user.id)
+            .where(base_condition)
             .order_by(ExcelExtractionTask.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -409,18 +426,14 @@ async def list_tasks(
 
         # 获取总数
         count_result = await session.execute(
-            select(ExcelExtractionTask)
-            .where(ExcelExtractionTask.user_id == user.id)
+            select(ExcelExtractionTask).where(base_condition)
         )
         total = len(count_result.scalars().all())
 
         # 在 session block 内转换，确保属性不被过期
         items = [_task_to_response(t) for t in tasks]
 
-    # 调试输出
-    logger.info(f"[list_tasks] 返回 {len(items)} 个任务")
-    for item in items:
-        logger.info(f"[list_tasks] task_id={item.task_id}, session_id={item.session_id}")
+    logger.info(f"[list_tasks] 返回 {len(items)} 个任务（已过滤过期取消任务）")
 
     return TaskListResponse(items=items, total=total, page=page, page_size=page_size)
 

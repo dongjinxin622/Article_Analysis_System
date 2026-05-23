@@ -16,7 +16,9 @@ from backend.app.schemas.batch import (
     BatchTaskDetail, TaskProgress, HITLCheckpoint, BatchExtractionRequest
 )
 from backend.app.schemas.user import (
-    UserCreate, UserLogin, Token, UserResponse, LoginResponse, UserUpdate
+    UserCreate, UserLogin, UserResponse, LoginResponse,
+    TokenRefreshRequest, TokenRefreshResponse,
+    UserProfileUpdate, UserPasswordUpdate,
 )
 from backend.app.schemas.domain import (
     DomainConfigResponse, DomainListResponse, TechRouteRequest,
@@ -36,7 +38,9 @@ __all__ = [
     "BatchTaskStatus", "BatchTaskRequest", "BatchTaskResponse",
     "BatchTaskDetail", "TaskProgress", "HITLCheckpoint", "BatchExtractionRequest",
     # User
-    "UserCreate", "UserLogin", "Token", "UserResponse", "LoginResponse", "UserUpdate",
+    "UserCreate", "UserLogin", "UserResponse", "LoginResponse",
+    "TokenRefreshRequest", "TokenRefreshResponse",
+    "UserProfileUpdate", "UserPasswordUpdate",
     # Domain
     "DomainConfigResponse", "DomainListResponse", "TechRouteRequest",
     "TechRouteResponse", "ExpSchemeRequest", "ExpSchemeResponse",

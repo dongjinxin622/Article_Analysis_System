@@ -1,24 +1,57 @@
 import { request } from './request'
-import type { User, LoginRequest, LoginResponse, RegisterRequest } from '@/types/user'
+import type {
+  User, LoginRequest, LoginResponse, RegisterRequest,
+  TokenRefreshRequest, TokenRefreshResponse,
+  ProfileUpdateRequest, PasswordUpdateRequest,
+  AdminUserUpdate, AvatarUpdateRequest,
+} from '@/types/user'
 
 export const userApi = {
-  // 用户登录
+  // === 认证 ===
   login(data: LoginRequest): Promise<LoginResponse> {
     return request.post('/users/login', data)
   },
-
-  // 用户注册
   register(data: RegisterRequest): Promise<User> {
     return request.post('/users/register', data)
   },
+  refreshToken(data: TokenRefreshRequest): Promise<TokenRefreshResponse> {
+    return request.post('/users/refresh', data)
+  },
 
-  // 获取当前用户信息
+  // === 个人中心 ===
   getCurrentUser(): Promise<User> {
     return request.get('/users/me')
   },
+  updateProfile(data: ProfileUpdateRequest): Promise<User> {
+    return request.put('/users/me/profile', data)
+  },
+  updatePassword(data: PasswordUpdateRequest): Promise<User> {
+    return request.put('/users/me/password', data)
+  },
+  updateAvatar(data: AvatarUpdateRequest): Promise<User> {
+    return request.put('/users/me/avatar', data)
+  },
+  uploadAvatar(formData: FormData): Promise<User> {
+    return request.upload('/users/me/avatar/upload', formData)
+  },
 
-  // 更新用户信息
-  updateUser(data: { email?: string; full_name?: string; password?: string }): Promise<User> {
-    return request.put('/users/me', data)
-  }
+  // === 管理员 ===
+  listUsers(): Promise<User[]> {
+    return request.get('/users/')
+  },
+  getUserDetail(publicId: string): Promise<User> {
+    return request.get(`/users/${publicId}`)
+  },
+  createUser(data: RegisterRequest): Promise<User> {
+    return request.post('/users/', data)
+  },
+  updateUser(publicId: string, data: AdminUserUpdate): Promise<User> {
+    return request.put(`/users/${publicId}`, data)
+  },
+  disableUser(publicId: string): Promise<User> {
+    return request.patch(`/users/${publicId}/disable`)
+  },
+  deleteUser(publicId: string): Promise<void> {
+    return request.delete(`/users/${publicId}`)
+  },
 }

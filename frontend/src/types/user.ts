@@ -1,13 +1,14 @@
 // 用户相关类型
 export interface User {
-  id: number
+  public_id: string
   username: string
+  nickname?: string
   email?: string
-  full_name?: string
-  is_active: boolean
-  is_admin: boolean
+  avatar_url?: string
+  is_superuser: boolean
+  disabled: boolean
   created_at?: string
-  last_login?: string
+  last_login_at?: string
 }
 
 export interface LoginRequest {
@@ -18,22 +19,53 @@ export interface LoginRequest {
 export interface LoginResponse {
   success: boolean
   message: string
-  token?: {
-    access_token: string
-    expires_in: number
-  }
+  access_token: string
+  refresh_token: string
+  token_type: string
+  expires_in: number
   user?: User
 }
 
 export interface RegisterRequest {
   username: string
   password: string
+  repassword: string
   email?: string
   full_name?: string
 }
 
-export interface Token {
+export interface AdminUserUpdate {
+  username?: string
+  email?: string
+  nickname?: string
+  avatar_url?: string
+  password?: string
+  sort_order?: number
+  is_superuser?: boolean
+  disabled_at?: string | null
+}
+
+export interface AvatarUpdateRequest {
+  avatar_url: string
+}
+
+export interface TokenRefreshRequest {
+  refresh_token: string
+}
+
+export interface TokenRefreshResponse {
   access_token: string
   token_type: string
   expires_in: number
+}
+
+export interface ProfileUpdateRequest {
+  email?: string
+  full_name?: string
+}
+
+export interface PasswordUpdateRequest {
+  old_password: string
+  new_password: string
+  confirm_password: string
 }
