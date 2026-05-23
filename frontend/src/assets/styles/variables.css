@@ -1,0 +1,75 @@
+/* 全局 CSS 变量定义 — 沿用 Element Plus 蓝色系 */
+:root {
+  /* 主色调 */
+  --color-primary: #409eff;
+  --color-primary-dark: #337ecc;
+  --color-primary-light: #79bbff;
+  --color-primary-lighter: #ecf5ff;
+
+  /* 功能色 */
+  --color-success: #67c23a;
+  --color-warning: #e6a23c;
+  --color-danger: #f56c6c;
+  --color-info: #909399;
+
+  /* 文字色 */
+  --text-primary: #303133;
+  --text-regular: #606266;
+  --text-secondary: #909399;
+  --text-placeholder: #c0c4cc;
+
+  /* 背景色 */
+  --bg-page: #f0f2f5;
+  --bg-card: #ffffff;
+  --bg-sidebar: #304156;
+  --bg-sidebar-hover: #263445;
+  --bg-hover: #f5f7fa;
+  --bg-active: #ecf5ff;
+
+  /* 边框 */
+  --border-color: #dcdfe6;
+  --border-color-light: #e4e7ed;
+  --border-color-lighter: #ebeef5;
+  --border-color-extra-light: #f2f6fc;
+  --border-radius: 8px;
+  --border-radius-sm: 4px;
+  --border-radius-lg: 12px;
+
+  /* 禁用态 */
+  --disabled-bg-color: #f5f7fa;
+  --disabled-text-color: #c0c4cc;
+  --disabled-border-color: #e4e7ed;
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+  /* 间距 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* 页面容器 */
+  --page-max-width: 1400px;
+  --page-padding: 20px;
+
+  /* 侧边栏 */
+  --sidebar-width: 200px;
+  --sidebar-width-collapsed: 64px;
+
+  /* 统一 Element Plus 页面背景色 */
+  --el-bg-color-page: var(--bg-page);
+  /* 统一 Element Plus 卡片圆角和边框色 */
+  --el-card-border-radius: var(--border-radius);
+  --el-card-border-color: var(--border-color-light);
+
+  /* 响应式断点 */
+  --breakpoint-sm: 768px;
+  --breakpoint-md: 1024px;
+  --breakpoint-lg: 1400px;
+}

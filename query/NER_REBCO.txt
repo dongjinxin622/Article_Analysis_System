@@ -1,0 +1,176 @@
+# Superconducting Materials Entity Recognition Protocol v4.0 (EN)
+
+## Ⅰ. 实体体系（Entity Taxonomy）
+
+### **Material (M)**
+超导材料本体信息，包括材料身份、晶体学特征及掺杂元素。
+```
+├─ Material Identification
+│  ├─ Material Name: YBCO, BSCCO, MgB₂, Nb₃Sn, NbTi, Iron-based superconductors
+│  ├─ Chemical Formula: YBa₂Cu₃O₇₋δ, Bi₂Sr₂CaCu₂O₈₊δ, MgB₂, Nb₃Sn, SmFeAsO₁₋ₓFₓ
+│  └─ Common Abbreviation: REBCO, Bi-2212, Bi-2223, 122, 1111
+├─ Crystal Characteristics
+│  ├─ Crystal System: Orthorhombic, Tetragonal, Hexagonal, Cubic
+│  ├─ Space Group: Pmmm, I4/mmm, P6/mmm, Fm-3m
+│  ├─ Lattice Parameter a (Å)
+│  ├─ Lattice Parameter b (Å)  (if applicable)
+│  └─ Lattice Parameter c (Å)
+└─ Dopant Element: Gd, Zr, etc.
+```
+
+### **Microstructural_Hierarchy (MH)**
+微观结构层次，涵盖晶体结构、缺陷、界面及尺寸控制。
+```
+├─ Crystalline Architecture
+│  ├─ Crystal Structure: REBCO-123, Bi-2212
+│  ├─ Grain Boundary Type: Low-angle (θ<5°), Σ3 CSL
+│  └─ Phase Composition: Bi-2212/Ag composite
+├─ Defect Network
+│  ├─ Dislocation Density (/cm²)
+│  ├─ Nanoparticle Size (diameter: nm)
+│  ├─ Vacancy Concentration (%)
+│  ├─ Pinning Center Type: Nanorod, Nanoparticle, Precipitate
+│  └─ Dislocation Type
+├─ Interfacial System
+│  ├─ Interface Roughness (Ra: nm)
+│  ├─ Multilayer Structure (stacking period: Å)
+│  ├─ Coherence Length (ξ: nm)
+│  └─ Penetration Depth (λ: nm)
+└─ Dimensional Control
+   ├─ Film Thickness (μm)
+   ├─ Coating Thickness (nm)
+   ├─ Tape Width (4-12mm)
+   └─ Substrate Thickness (基底材料参数)
+```
+
+### **Transport_Behavior (TB)**
+输运性能及相关依赖关系。
+```
+├─ Critical Parameters
+│  ├─ Critical Current Density (临界电流密度) (Jc: MA/cm²)
+│  ├─ Critical Current (临界电流) (Ic: MA/cm)
+│  ├─ Critical Current Anisotropy (Jc‖ab/Jc‖c)
+│  └─ Irreversibility Field (Hirr: T)
+├─ Dependence Factors
+│  ├─ Field Dependence (dJc/dB)
+│  ├─ Temperature Dependence (dHirr/dT)
+│  ├─ Strain Sensitivity (ε_c: %)
+│  └─ Magnetic Field Strength (H: T)
+├─ Degradation Metrics
+│  ├─ Current Decay Rate (%/cycle)
+│  └─ Carrier Concentration (cm⁻³)
+└─ Dynamic Response
+   ├─ Flux Pinning Strength (U0: meV)
+   └─ Anisotropy Factor (Γ=Hirr‖ab/Hirr‖c)
+```
+
+### **Manufacturing_Process_Chain (MPC)**
+制备工艺链及相关参数。
+```
+├─ Deposition Techniques
+│  ├─ Sputtering (DC/RF)
+│  ├─ PLD (0.1-5nm/s)
+│  ├─ MOD/RTR (5m/min)
+│  ├─ MOCVD (ΔT20℃)
+│  ├─ Electrochemical Deposition
+│  └─ Roll-to-Roll (RTR)
+├─ Process Parameters
+│  ├─ Deposition Temperature (℃)
+│  ├─ Oxygen Partial Pressure (Pa)
+│  ├─ Laser Power (W)/Frequency (Hz)
+│  ├─ Annealing Time (h)
+│  ├─ Target-to-Substrate Distance (cm)
+│  ├─ Cooling Rate (K/min)
+│  └─ Precursor Concentration (mol/L)
+├─ System Constraints
+│  ├─ Tape Length (>500m)
+│  ├─ Coating Uniformity (Δthickness±3%)
+│  └─ Substrate Specification (基底材料)
+└─ Post-Processing
+   ├─ Heat Treatment (RTA, 800±10℃)
+   └─ Rolling Process (ε=15%)
+```
+
+---
+
+## Ⅱ. 高级处理逻辑（Advanced Processing Logic）
+
+1. **复杂模式解析**
+   - 解析复合条件：
+     `Jc(77K,3T‖c)=1.2MA/cm² → {value:1.2e6, conditions:{T:77, B:3, θ:90}}`
+   - 处理范围数据：
+     `Hirr(65-77K)=5.8-7.2T → {T_range:[65,77], B_range:[5.8,7.2]}`
+
+2. **新型工艺检测**
+   ```json
+   {
+     "type": "Emerging_Process",
+     "symbol": "CLD-VS",
+     "name": "Chemical Liquid Deposition with Vacuum Sealing",
+     "parameters": {
+       "pressure_range": "1e-3 - 1e-5 Torr",
+       "characteristic_rate": "2-5 nm/s"
+     }
+   }
+   ```
+
+---
+
+## Ⅲ. 输出格式规范
+
+返回结果必须严格遵循以下 JSON 数组格式：
+
+```json
+[
+  {
+    "type": "Transport_Behavior",          // 实体类型：Material / Microstructural_Hierarchy / Transport_Behavior / Manufacturing_Process_Chain
+    "subtype": "Critical_Current_Density", // 子类别（对应树状结构中的具体项）
+    "symbol": "Jc",                         // 参数符号（如适用）
+    "value": 3.6e6,                          // 数值（如适用）
+    "unit": "A/cm²",                          // 单位（如适用）
+    "condition": {                            // 条件参数（可选）
+      "temp": 77,
+      "field": 5
+    },
+    "parameters": [                           // 可选字段，所有实体类型均可使用
+      {
+        "type": "deposition_rate",
+        "value": 2,
+        "unit": "nm/s"
+      }
+    ]
+  }
+]
+```
+
+---
+
+**输出样例（JSON格式）：**
+```json
+[
+  {
+    "type": "Microstructural_Hierarchy",
+    "subtype": "Dimensional_Control",
+    "symbol": "Film_Thickness",
+    "value": 300,
+    "unit": "nm"
+  },
+  {
+    "type": "Manufacturing_Process_Chain",
+    "subtype": "Deposition_Techniques",
+    "symbol": "PLD",
+    "name": "laser molecular beam epitaxy",
+    "parameters": [
+      {
+        "type": "deposition_method",
+        "value": "computer-controlled"
+      }
+    ]
+  },
+  {
+    "type": "Material",
+    "subtype": "Material_Identification",
+    "symbol": "BaNb0.2Ti0.8O3"
+  }
+]
+```

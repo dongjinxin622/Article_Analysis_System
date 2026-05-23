@@ -1,0 +1,33 @@
+请分析以下论文题录数据，按指定字段提取信息。
+
+## 论文数据
+DOI: {doi}
+标题: {title}
+作者: {authors}
+摘要: {abstract}
+
+## 提取字段定义
+{
+  "related": "是否与目标研究领域相关 (boolean: true/false)",
+  "institution": "通讯作者所属机构 (string)",
+  "summary": "论文核心贡献摘要 (string, 200字以内)",
+  "key_technologies": "使用的关键技术列表 (array of strings)",
+  "application_areas": "应用领域列表 (array of strings)",
+  "laser_type": "PCSEL、VECSEL、DFB、DBR、HPDL、 (string)",
+  "gain_medium": "GaAs、InP、GaSb、GaN、Quantum Well、Quantum Dot (string)",
+  "pulse_width": "fs、ps (string)",
+  "repetition_rate": "GHz、THz (string)",
+  "timing_jitter": "fs、ps (string)",
+  "peak_power": "mW、W (string)",
+  "central_wavelength": "nm (string)",
+  "optical_bandwidth": "nm (string)",
+  "rise_fall_time": "ps (string)",
+  "beam_quality": "M2 因子 (string)"
+}
+
+## 输出要求
+请以 JSON 格式返回结果，确保：
+1. 所有字段都有值（无法确定时填 "N/A")
+2. related 字段必须是 true 或 false
+3. 数组字段即使是空也要返回 []
+4. 不要添加额外的解释或说明，直接返回 JSON

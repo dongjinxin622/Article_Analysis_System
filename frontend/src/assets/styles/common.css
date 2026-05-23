@@ -1,0 +1,66 @@
+/* 全局通用样式类 — 基于CSS变量，各页面直接使用 */
+.page-container {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: var(--page-padding);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.page-header-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.page-description {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-top: var(--spacing-xs);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-card {
+  text-align: center;
+  padding: var(--spacing-lg);
+}
+
+/* 实体/关系类型颜色调色板 — 10种预定义颜色动态分配 */
+.entity-color-palette {
+  --entity-color-0: #409eff;
+  --entity-color-1: #67c23a;
+  --entity-color-2: #e6a23c;
+  --entity-color-3: #f56c6c;
+  --entity-color-4: #909399;
+  --entity-color-5: #b37feb;
+  --entity-color-6: #36cfc9;
+  --entity-color-7: #ff85c0;
+  --entity-color-8: #ffc53d;
+  --entity-color-9: #597ef7;
+}
+
+/* 文字辅助类 */
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-sm {
+  font-size: 12px;
+}
+

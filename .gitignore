@@ -1,0 +1,54 @@
+# ===== 敏感信息 =====
+.env
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ===== 大型模型与第三方库 =====
+stanza_resources/
+scipdf/
+
+# ===== Node.js =====
+node_modules/
+frontend/dist/
+
+# ===== 运行时数据 =====
+data/
+outputs/
+results/
+batch_results/
+logs/
+*.log
+backend.log
+
+# ===== 上传文件 =====
+excel_section_test_sample/
+sample/
+
+# ===== PDF 文件 =====
+*.pdf
+
+# ===== IDE 配置 =====
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===== 操作系统 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== 临时文件 =====
+*.tmp
+*.bak
+*.pkl
+
+# ===== 任务结果 =====
+task_result.json

@@ -1,0 +1,114 @@
+# Article Analysis System v3 - Docker Compose Configuration
+# 用于生产环境部署
+
+version: '3.8'
+
+services:
+  # 前端服务
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # 后端服务
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=mysql+aiomysql://root:${MYSQL_PASSWORD}@mysql_host:3306/article_analysis_v3
+      - MILVUS_URI=http://milvus_host:19530
+      - API_KEY=${API_KEY}
+      - BASE_URL=${BASE_URL}
+      - MODEL_NAME=${MODEL_NAME}
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      - mysql_host
+      - redis
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MySQL 数据库（可选，如果已有云端数据库）
+  mysql_host:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=article_analysis_v3
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis 缓存和任务队列
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker（异步任务处理）
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: celery -A backend.app.celery_app worker --loglevel=info
+    environment:
+      - DATABASE_URL=mysql+aiomysql://root:${MYSQL_PASSWORD}@mysql_host:3306/article_analysis_v3
+      - MILVUS_URI=http://milvus_host:19530
+      - REDIS_URL=redis://redis:6379/0
+      - API_KEY=${API_KEY}
+      - BASE_URL=${BASE_URL}
+      - MODEL_NAME=${MODEL_NAME}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:

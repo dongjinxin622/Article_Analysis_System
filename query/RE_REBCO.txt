@@ -1,0 +1,128 @@
+### 任务说明
+你是一位超导材料领域的知识图谱工程师，需要从给定的科学文本句子中提取实体之间的关系。请严格遵循以下关系体系：
+
+### 实体类型(Type)定义
+1. **Material (M)**：超导材料实体
+   - 子类型：REBCO化合物（如YBa₂Cu₃O₇）、掺杂材料等
+
+2. **Microstructural_Hierarchy (MH)**：微观结构实体
+   - 子类型：晶界、纳米柱、位错、沉淀相等
+
+3. **Manufacturing_Process_Chain (MPC)**：制造工艺实体
+   - 子类型：沉积、热处理、轧制等工艺
+
+4. **Transport_Behavior (TB)**：输运性能实体
+   - 子类型：Jc（临界电流）、钉扎强度、电阻率等
+
+### 关系提取规则
+严格按以下配对提取关系，并判断影响性质：
+| 关系方向                    | 关系类型   | 影响性质要求         | 判断依据示例 |
+|-----------------------------|------------|----------------------|-------------|
+| M → MH                      | has        | 中性 (neutral)       | "REBCO具有纳米柱状结构" |
+| M → MPC                     | undergoes  | 中性 (neutral)       | "带材经历MOCVD工艺" |
+| MPC → M                     | produces   | 中性 (neutral)       | "PLD工艺制备出薄膜" |
+| MPC → MH                    | controls   | 双向 (±)             | 正面："优化沉积提高晶界质量"<br>负面："过热导致BaCuO₂偏析" |
+| MH → TB                     | affects    | 双向 (±)             | 正面："纳米柱增强钉扎强度"<br>负面："大角度晶界降低Jc" |
+| M → TB                      | determines | 双向 (±)             | 正面："YBaCuO高Tc提升载流能力"<br>负面："GdBaCuO磁矩增大损耗" |
+| TB → TB                     | affects    | 双向 (±)             | 正面："Jc随温度升高而降低"<br>负面："电阻率随温度升高而降低" |
+
+### 输入数据格式
+- **实体列表**：每个实体包含三个属性：
+  ```python
+  {
+    "type": "Material/Microstructural_Hierarchy/...",
+    "subtype": "具体子类",
+    "symbol": "实体名称"
+  }
+
+输出要求
+仅提取实体列表中存在的实体关系
+
+为MPC→MH、MH→TB、M→TB关系标注影响性质：
+
+(+) 正面影响：当文本出现"增强/提高/优化"等词
+
+(-) 负面影响：当文本出现"降低/阻碍/恶化"等词
+
+输出JSON格式：
+
+json
+[
+  {
+    "relation_type": "has/controls/affects/etc",
+    "source_type": "实体类别",
+    "source_entity": "实体符号",
+    "target_type": "实体类别"
+    "target_entity": "实体符号",
+    "effect": "neutral/positive/negative",
+    "supporting_sentence": "原文字句",
+  }
+]
+示例
+输入
+实体列表:
+json
+[
+  {"type": "Material", "subtype": "REBCO", "symbol": "YBa2Cu3O7"},
+  {"type": "Microstructural_Hierarchy", "subtype": "Defect", "symbol": "BZO_nanocolumns"},
+  {"type": "Manufacturing_Process_Chain", "subtype": "Deposition", "symbol": "MOCVD"},
+  {"type": "Transport_Behavior", "subtype": "Critical_Current", "symbol": "Jc"}
+]
+文本句子:
+python
+[
+  "YBa2Cu3O7 thin films were fabricated by MOCVD deposition.",
+  "BZO nanocolumns introduced during MOCVD significantly enhance flux pinning strength.",
+  "Excessive deposition temperature causes coarse growth of BZO nanocolumns, degrading Jc at high fields.",
+  "The high Tc of YBa2Cu3O7 determines its superior Jc performance at 77K.",
+  "MOCVD process parameters directly control the density and alignment of BZO nanocolumns."
+]
+输出
+json
+[
+  {
+    "relation_type": "undergoes",
+    "source_type": "Material",
+    "source_entity": "YBa2Cu3O7",
+    "target_type": "Manufacturing_Process_Chain",
+    "target_entity": "MOCVD",
+    "effect": "neutral",
+    "supporting_sentence": "YBa2Cu3O7 thin films were fabricated by MOCVD deposition.",
+  },
+  {
+    "relation_type": "affects",
+    "source_type": "Microstructural_Hierarchy",
+    "source_entity": "BZO_nanocolumns",
+    "target_type": "Transport_Behavior",
+    "target_entity": "Jc",
+    "effect": "positive",
+    "supporting_sentence": "BZO nanocolumns introduced during MOCVD significantly enhance flux pinning strength.",
+  },
+  {
+    "relation_type": "affects",
+    "source_type": "Microstructural_Hierarchy",
+    "source_entity": "BZO_nanocolumns",
+    "target_type": "Transport_Behavior",
+    "target_entity": "Jc",
+    "effect": "negative",
+    "supporting_sentence": "Excessive deposition temperature causes coarse growth of BZO nanocolumns, degrading Jc at high fields.",
+  },
+  {
+    "relation_type": "determines",
+    "source_type": "Material",
+    "source_entity": "YBa2Cu3O7",
+    "target_type": "Transport_Behavior",
+    "target_entity": "Jc",
+    "effect": "positive",
+    "supporting_sentence": "The high Tc of YBa2Cu3O7 determines its superior Jc performance at 77K.",
+  },
+  {
+    "relation_type": "controls",
+    "target_type": "Manufacturing_Process_Chain",
+    "source_entity": "MOCVD",
+    "source_type": "Microstructural_Hierarchy",
+    "target_entity": "BZO_nanocolumns",
+    "effect": "positive",
+    "supporting_sentence": "MOCVD process parameters directly control the density and alignment of BZO nanocolumns.",
+  }
+]

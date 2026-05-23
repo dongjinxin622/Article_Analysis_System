@@ -1,0 +1,63 @@
+# SciPDF AI论文处理系统 v3 - Python 依赖
+
+# FastAPI 核心
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-multipart>=0.0.6
+
+# 数据库
+aiomysql>=0.2.0
+pymysql>=1.1.0
+sqlalchemy>=2.0.0
+
+# 向量数据库
+pymilvus>=2.3.0
+
+# Redis
+redis>=5.0.0
+aioredis>=2.0.0
+
+# 异步 HTTP
+httpx>=0.24.0
+aiofiles>=23.2.0
+
+# OpenAI API
+openai>=1.0.0
+
+# PDF 解析
+pymupdf>=1.23.0  # PyMuPDF
+scipdf-parser>=0.3.0  # GROBID PDF 解析（可选）
+
+# NLP
+stanza>=1.6.0
+
+# 数据处理
+pandas>=2.0.0
+openpyxl>=3.1.0
+numpy>=1.24.0
+json5>=0.9.0
+pickle5>=0.0.12  # Python < 3.8 兼容
+
+# 配置管理
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+
+# 进度显示
+tqdm>=4.66.0
+
+# Celery 异步任务（可选，Step6 使用）
+celery>=5.3.0
+
+# JWT 认证
+python-jose>=3.3.0
+passlib>=1.7.4
+bcrypt>=4.0.0
+
+# 日志
+loguru>=0.7.0  # 可选，更强大的日志库
+
+# 开发依赖
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+httpx>=0.24.0  # 测试 HTTP 客户端
