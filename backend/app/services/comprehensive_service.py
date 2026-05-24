@@ -161,18 +161,12 @@ class ComprehensiveAnalysisService:
             if progress_callback:
                 await progress_callback("llm_comparison", "LLM综合分析完成", 95)
 
-            # Step 5: 生成报告（三种格式）
-            report_paths = await self._generate_report(result, pdf_path, task_id)
-            result["report_paths"] = report_paths
-            result["report_path"] = report_paths.get("markdown", "")  # 兼容旧字段
-
-            # 检查各项分析是否成功
+            # 检查各项分析是否成功（必须在生成报告之前，报告依赖 result["success"]）
             tech_route_ok = tech_route_result.get("success", False)
             exp_scheme_ok = exp_scheme_result.get("success", False)
             jc_ok = jc_result.get("success", False)
             llm_ok = bool(llm_comparison)
 
-            # 区分"全部成功"和"部分成功"
             if tech_route_ok and exp_scheme_ok and jc_ok and llm_ok:
                 result["success"] = True
                 result["message"] = "综合分析完成"
@@ -191,6 +185,11 @@ class ComprehensiveAnalysisService:
             else:
                 result["success"] = False
                 result["message"] = "综合分析完成，但所有分析项均未成功"
+
+            # Step 5: 生成报告（三种格式）
+            report_paths = await self._generate_report(result, pdf_path, task_id)
+            result["report_paths"] = report_paths
+            result["report_path"] = report_paths.get("markdown", "")
 
             if progress_callback:
                 await progress_callback("complete", "分析完成", 100)

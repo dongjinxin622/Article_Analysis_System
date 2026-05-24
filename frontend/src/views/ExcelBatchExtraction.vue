@@ -5,7 +5,7 @@ import { Download, Refresh, UploadFilled } from '@element-plus/icons-vue'
 import { marked } from 'marked'
 import { excelExtractionApi } from '@/api/excel_extraction'
 import { useExcelExtractionWs } from '@/composables/useExcelExtractionWs'
-import { getStatusType, getStatusText, formatTime, sanitizeHtml } from '@/utils/helpers'
+import { getStatusType, getStatusText, formatTime, sanitizeHtml, shouldHideCancelledTask } from '@/utils/helpers'
 import type { UploadPreviewResponse, TaskDetail } from '@/types/excel_extraction'
 
 // 当前步骤
@@ -335,11 +335,11 @@ function resetAndStartNew() {
   ws.value = null
 }
 
-// 获取历史任务
+// 获取历史任务（取消超过24小时的任务由 shouldHideCancelledTask 过滤）
 async function fetchHistoryTasks() {
   try {
     const response = await excelExtractionApi.getTaskList({ page: 1, page_size: 10 })
-    historyTasks.value = response.items || []
+    historyTasks.value = (response.items || []).filter(t => !shouldHideCancelledTask(t))
   } catch (error) {
     console.error('[HistoryTasks] 获取失败:', error)
   }

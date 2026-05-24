@@ -615,8 +615,14 @@ class WebAgentRunner:
         return END
 
     def stop(self):
-        """停止执行"""
+        """停止执行（同时唤醒可能阻塞在 HITL 等待中的工作流）"""
         self._running = False
+        try:
+            hitl_ctx = WebHITLContext.get_sync(self.session_id)
+            if hitl_ctx:
+                hitl_ctx.abort("任务被取消")
+        except Exception:
+            pass
 
 
 # ============================================================================

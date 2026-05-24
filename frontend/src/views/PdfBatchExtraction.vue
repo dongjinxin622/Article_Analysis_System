@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { usePaperStore, useNerStore, useReStore } from '@/stores'
 import { batchApi } from '@/api'
 import { promptApi } from '@/api/prompt'
-import { getStatusType, getStatusText, formatTime } from '@/utils/helpers'
+import { getStatusType, getStatusText, formatTime, shouldHideCancelledTask } from '@/utils/helpers'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, Refresh, ArrowLeft, UploadFilled, CircleCheck, CircleClose, Loading } from '@element-plus/icons-vue'
 import type { ProcessingResult } from '@/types/paper'
@@ -228,11 +228,11 @@ function stopProgressPolling() {
   }
 }
 
-// 获取任务列表
+// 获取任务列表（取消超过24小时的任务由 shouldHideCancelledTask 过滤）
 async function fetchTaskList() {
   try {
     const response = await batchApi.getTaskList({ page: 1, page_size: 20 })
-    taskList.value = response.items || []
+    taskList.value = (response.items || []).filter(t => !shouldHideCancelledTask(t))
   } catch (error) {
     console.error('[Batch] 获取任务列表失败:', error)
   }

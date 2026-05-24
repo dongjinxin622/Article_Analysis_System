@@ -19,6 +19,7 @@ class WebHITLContext:
 
     _instances: Dict[str, 'WebHITLContext'] = {}
     _lock = asyncio.Lock()
+    HITL_TIMEOUT = 300  # 5分钟超时（用户长时间无响应则自动继续）
 
     def __init__(self, session_id: str):
         self.session_id = session_id
@@ -27,6 +28,7 @@ class WebHITLContext:
         self._pending_data: Optional[Dict] = None
         self._action_event = asyncio.Event()
         self._created_at = datetime.now()
+        self._aborted = False
 
     @classmethod
     async def get(cls, session_id: str) -> 'WebHITLContext':
@@ -37,19 +39,58 @@ class WebHITLContext:
             return cls._instances[session_id]
 
     @classmethod
+    def get_sync(cls, session_id: str) -> Optional['WebHITLContext']:
+        """同步获取已存在的会话上下文（不创建新的）"""
+        return cls._instances.get(session_id)
+
+    @classmethod
     async def remove(cls, session_id: str):
-        """移除会话上下文"""
+        """移除会话上下文（先唤醒等待中的工作流，再删除）"""
         async with cls._lock:
             if session_id in cls._instances:
+                ctx = cls._instances[session_id]
+                ctx.abort("会话已被清理")
                 del cls._instances[session_id]
+
+    def abort(self, reason: str = "会话已终止"):
+        """中断等待中的 HITL 上下文（由 WebSocket 断开或取消任务触发）"""
+        if self._aborted:
+            return
+        self._aborted = True
+        # 设置默认动作为 continue，避免工作流永久阻塞
+        if self._pending_action is None:
+            self._pending_action = "continue"
+            self._pending_data = {"text": f"[系统自动] {reason}", "action": "continue", "data": {}}
+        self._action_event.set()
+        logger.info(f"[WebHITL] 会话 {self.session_id} 已中断: {reason}")
 
     def set_ws_callback(self, callback: Callable[[Dict], Awaitable[None]]):
         """设置 WebSocket 回调函数"""
         self.ws_callback = callback
 
+    async def _wait_for_action(self):
+        """等待用户动作，支持超时和中断（会话清理或取消时不会永久阻塞）"""
+        try:
+            done, pending = await asyncio.wait(
+                [asyncio.create_task(self._action_event.wait())],
+                timeout=self.HITL_TIMEOUT
+            )
+            for t in pending:
+                t.cancel()
+            if not done:
+                # 超时：自动继续
+                logger.warning(f"[WebHITL] 会话 {self.session_id} HITL 等待超时，自动继续")
+                self._pending_action = "continue"
+                self._pending_data = {"text": "[系统自动] 用户响应超时，自动继续", "action": "continue", "data": {}}
+        except asyncio.CancelledError:
+            # 被外部取消时，确保 _pending_action 不为 None
+            if self._pending_action is None:
+                self._pending_action = "continue"
+                self._pending_data = {"text": "[系统自动] 任务被取消，自动继续", "action": "continue", "data": {}}
+
     async def send_message(self, message: Dict):
         """发送消息到 WebSocket"""
-        if self.ws_callback:
+        if self.ws_callback and not self._aborted:
             try:
                 await self.ws_callback(message)
             except Exception as e:
@@ -85,7 +126,7 @@ class WebHITLContext:
             "timestamp": datetime.now().isoformat()
         })
 
-        await self._action_event.wait()
+        await self._wait_for_action()
         action = self._pending_action
 
         self._pending_action = None
@@ -121,8 +162,8 @@ class WebHITLContext:
             "timestamp": datetime.now().isoformat()
         })
 
-        logger.info(f"[DEBUG request_llm_chat] session_id={self.session_id}, waiting for user response")
-        await self._action_event.wait()
+        logger.info(f"[DEBUG request_llm_chat] session_id={self.session_id}, waiting for user response (timeout={self.HITL_TIMEOUT}s)")
+        await self._wait_for_action()
         logger.info(f"[DEBUG request_llm_chat] session_id={self.session_id}, _action_event unblocked")
 
         result = {

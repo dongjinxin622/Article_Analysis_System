@@ -8,7 +8,6 @@ import { request } from './request'
 export interface ComprehensiveAnalysisRequest {
   ner_id?: string
   pdf_result_id?: string
-  target_doi?: string
   top_k?: number
 }
 
@@ -157,7 +156,6 @@ export const comprehensiveApi = {
     file: File,
     options?: {
       top_k?: number
-      target_doi?: string
       ner_query_file?: string
       re_query_file?: string
     }
@@ -165,7 +163,6 @@ export const comprehensiveApi = {
     const formData = new FormData()
     formData.append('file', file)
     if (options?.top_k) formData.append('top_k', String(options.top_k))
-    if (options?.target_doi) formData.append('target_doi', options.target_doi)
     if (options?.ner_query_file) formData.append('ner_query_file', options.ner_query_file)
     if (options?.re_query_file) formData.append('re_query_file', options.re_query_file)
     return request.upload('/comprehensive/one-click', formData)

@@ -77,13 +77,17 @@ class ReportService:
         md.append("# 📊 SciPDF AI 论文分析报告\n")
         md.append(f"**任务 ID**: `{task_id}`  \n")
         md.append(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  \n")
-        target_doi = (analysis_data.get('pdf_info', {}) or {}).get('doi') or (analysis_data.get('jc_analysis', {}) or {}).get('ranking', {}).get('target_doi') or 'N/A'
-        md.append(f"**目标 DOI**: `{target_doi}`  \n")
+        pdf_info = analysis_data.get('pdf_info') or {}
+        target_doi = pdf_info.get('doi')
+        if not target_doi:
+            ranking = (analysis_data.get('jc_analysis') or {}).get('ranking') or {}
+            target_doi = ranking.get('target_doi')
+        md.append(f"**目标 DOI**: `{target_doi or 'N/A'}`  \n")
         md.append("\n---\n")
 
         # 一、摘要
         md.append("## 一、摘要\n")
-        summary = self._create_summary_data(analysis_data)
+        summary = self._create_summary_data(analysis_data, task_id)
         for key, value in summary.items():
             md.append(f"- **{key}**: {value}\n")
         md.append("\n")
@@ -226,7 +230,7 @@ class ReportService:
         try:
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
                 # Sheet 1: 摘要
-                summary_data = self._create_summary_data(analysis_data)
+                summary_data = self._create_summary_data(analysis_data, task_id)
                 summary_df = pd.DataFrame([summary_data])
                 summary_df.to_excel(writer, sheet_name='摘要', index=False)
 
@@ -386,13 +390,17 @@ class ReportService:
             elements.append(Spacer(1, 10))
             elements.append(Paragraph(f"任务 ID: {task_id}", styles['Normal']))
             elements.append(Paragraph(f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
-            target_doi_pdf = (analysis_data.get('pdf_info', {}) or {}).get('doi') or (analysis_data.get('jc_analysis', {}) or {}).get('ranking', {}).get('target_doi') or 'N/A'
-            elements.append(Paragraph(f"目标 DOI：{target_doi_pdf}", styles['Normal']))
+            pdf_info_pdf = analysis_data.get('pdf_info') or {}
+            target_doi_pdf = pdf_info_pdf.get('doi')
+            if not target_doi_pdf:
+                ranking_pdf = (analysis_data.get('jc_analysis') or {}).get('ranking') or {}
+                target_doi_pdf = ranking_pdf.get('target_doi')
+            elements.append(Paragraph(f"目标 DOI：{target_doi_pdf or 'N/A'}", styles['Normal']))
             elements.append(Spacer(1, 20))
 
             # 一、摘要
             elements.append(Paragraph("一、摘要", heading_style))
-            summary = self._create_summary_data(analysis_data)
+            summary = self._create_summary_data(analysis_data, task_id)
             summary_data = [[k, str(v)] for k, v in summary.items()]
             summary_table = Table(summary_data, colWidths=[6*cm, 8*cm])
             summary_table.setStyle(TableStyle([
@@ -493,13 +501,20 @@ class ReportService:
             logger.error(f"生成 PDF 报告失败：{e}")
             raise
 
-    def _create_summary_data(self, analysis_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_summary_data(self, analysis_data: Dict[str, Any], task_id: str = "") -> Dict[str, Any]:
         """创建摘要数据"""
         summary = {
-            '任务 ID': analysis_data.get('task_id', 'N/A'),
+            '任务 ID': task_id or analysis_data.get('task_id', 'N/A'),
             '生成时间': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            '目标 DOI': (analysis_data.get('pdf_info', {}) or {}).get('doi') or (analysis_data.get('jc_analysis', {}) or {}).get('ranking', {}).get('target_doi') or 'N/A',
         }
+
+        # 目标 DOI — 优先 pdf_info，其次 jc_analysis ranking
+        pdf_info = analysis_data.get('pdf_info') or {}
+        doi = pdf_info.get('doi')
+        if not doi:
+            ranking = (analysis_data.get('jc_analysis') or {}).get('ranking') or {}
+            doi = ranking.get('target_doi')
+        summary['目标 DOI'] = doi or 'N/A'
 
         # 技术路线结果摘要
         tech_route = analysis_data.get('tech_route', {})

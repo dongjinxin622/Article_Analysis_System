@@ -123,9 +123,29 @@ async def get_batch_task_db(task_id: str) -> Optional[Dict[str, Any]]:
 
 
 async def get_user_batch_tasks_db(user_id: int) -> List[Dict[str, Any]]:
-    """从数据库获取用户的所有任务"""
+    """从数据库获取用户的所有任务（取消超过24小时的任务自动隐藏）"""
+    from sqlalchemy import or_, and_
+    from datetime import timedelta
+
+    cutoff = datetime.now() - timedelta(hours=24)
+
     async with AsyncSessionLocal() as db:
-        stmt = select(BatchTask).where(BatchTask.user_id == user_id).order_by(BatchTask.created_at.desc())
+        stmt = (
+            select(BatchTask)
+            .where(
+                and_(
+                    BatchTask.user_id == user_id,
+                    or_(
+                        BatchTask.status != "cancelled",
+                        and_(
+                            BatchTask.status == "cancelled",
+                            BatchTask.updated_at >= cutoff
+                        )
+                    )
+                )
+            )
+            .order_by(BatchTask.created_at.desc())
+        )
         result = await db.execute(stmt)
         tasks = result.scalars().all()
 

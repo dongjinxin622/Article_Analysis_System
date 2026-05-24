@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { jcApi, comprehensiveApi, promptApi } from '@/api'
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
-import { getStatusType, formatTime } from '@/utils/helpers'
+import { getStatusType, formatTime, shouldHideCancelledTask } from '@/utils/helpers'
 import type { JcDatabaseSearchResponse, JcDatabaseStatsResponse } from '@/api/jc'
 import type { ComprehensiveStatusResponse, ComprehensiveResult, TaskListItem, TaskListResponse } from '@/api/comprehensive'
 import type { PromptTemplate } from '@/api/prompt'
@@ -17,9 +17,9 @@ const jcDbMagneticField = ref<number | undefined>(undefined)
 const jcDbAngle = ref<number | undefined>(undefined)
 const jcDbTopK = ref(50)
 const jcDbMinJc = ref<number | undefined>(undefined)
-const jcDbTempTolerance = ref(5.0)
-const jcDbFieldTolerance = ref(1.0)
-const jcDbAngleTolerance = ref(10.0)
+const jcDbTempTolerance = ref(1)
+const jcDbFieldTolerance = ref(0.5)
+const jcDbAngleTolerance = ref(1)
 const jcDbSearchResult = ref<JcDatabaseSearchResponse | null>(null)
 const loadingJcDbSearch = ref(false)
 
@@ -36,9 +36,9 @@ const JC_DEFAULTS: Record<string, number | undefined> = {
   angle: undefined,
   topK: 50,
   minJc: undefined,
-  tempTolerance: 5.0,
-  fieldTolerance: 1.0,
-  angleTolerance: 10.0,
+  tempTolerance: 1,
+  fieldTolerance: 0.5,
+  angleTolerance: 1,
 }
 
 async function searchJcDatabase() {
@@ -126,7 +126,6 @@ function resetJcDefaults() {
 const uploadFile = ref<File | null>(null)
 const uploadRef = ref()
 const oneClickTopK = ref(10)
-const oneClickTargetDoi = ref('')
 const oneClickLoading = ref(false)
 
 // Prompt 模板选择（从API获取）
@@ -185,6 +184,7 @@ const historyActiveTab = ref('active')
 
 // 状态轮询定时器
 let pollTimer: ReturnType<typeof setInterval> | null = null
+let pollRunning = false  // 防止并发轮询
 
 // 步骤名称映射
 const stepNames: Record<string, string> = {
@@ -258,9 +258,8 @@ async function startOneClickAnalysis() {
   try {
     const response = await comprehensiveApi.oneClickAnalyze(uploadFile.value, {
       top_k: oneClickTopK.value,
-      target_doi: oneClickTargetDoi.value || undefined,
-      ner_query_file: selectedNerPrompt.value,   // 使用prompt name
-      re_query_file: selectedRePrompt.value      // 使用prompt name
+      ner_query_file: selectedNerPrompt.value,
+      re_query_file: selectedRePrompt.value
     })
 
     if (response.success) {
@@ -282,7 +281,10 @@ async function startOneClickAnalysis() {
 }
 
 function startPolling() {
+  stopPolling()
   pollTimer = setInterval(async () => {
+    if (pollRunning) return  // 上一次请求未完成则跳过
+    pollRunning = true
     try {
       const status = await comprehensiveApi.getStatus(taskId.value)
       taskStatus.value = status.status
@@ -295,19 +297,19 @@ function startPolling() {
         analysisResult.value = status.result || null
         oneClickLoading.value = false
         ElMessage.success('分析完成')
-        // 刷新任务列表
         await fetchTaskList()
       } else if (status.status === 'failed') {
         stopPolling()
         oneClickLoading.value = false
         ElMessage.error(status.message || status.error || '分析失败')
-        // 刷新任务列表
         await fetchTaskList()
       }
     } catch (error) {
       stopPolling()
       oneClickLoading.value = false
       ElMessage.error('状态查询失败')
+    } finally {
+      pollRunning = false
     }
   }, 2000)
 }
@@ -373,7 +375,6 @@ async function resumeTask(taskItem: TaskListItem) {
 
 function clearAnalysis() {
   clearFile()
-  oneClickTargetDoi.value = ''
   taskId.value = ''
   taskStatus.value = 'idle'
   taskProgress.value = 0
@@ -428,7 +429,7 @@ async function fetchTaskList() {
   loadingTaskList.value = true
   try {
     const response = await comprehensiveApi.getTaskList()
-    taskList.value = response.tasks || []
+    taskList.value = (response.tasks || []).filter(t => !shouldHideCancelledTask(t))
   } catch (error: any) {
     ElMessage.error(error.message || '加载任务列表失败')
     taskList.value = []
@@ -653,10 +654,6 @@ onUnmounted(() => {
 
             <el-form-item label="相似论文数量">
               <el-input-number v-model="oneClickTopK" :min="5" :max="50" />
-            </el-form-item>
-
-            <el-form-item label="目标 DOI">
-              <el-input v-model="oneClickTargetDoi" placeholder="用于 Jc 排名的目标 DOI（可选，自动从PDF提取）" clearable style="width: 300px" />
             </el-form-item>
 
             <el-form-item>

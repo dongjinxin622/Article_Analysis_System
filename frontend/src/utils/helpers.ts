@@ -32,6 +32,29 @@ export function getStatusText(status: string): string {
   return map[status] || status
 }
 
+// ===== 任务可见性过滤 =====
+
+/** 已取消任务超过指定小时数后隐藏（与后端 batch_service.py 保持一致）
+ *  优先使用 updated_at（取消操作会更新此字段），缺失时回退到 created_at
+ */
+export function shouldHideCancelledTask(
+  task: { status?: string; updated_at?: number | string; created_at?: number | string },
+  hideAfterHours = 24
+): boolean {
+  if (task.status !== 'cancelled') return false
+  const timestamp = task.updated_at ?? task.created_at
+  if (!timestamp) return false
+  let tsSeconds: number
+  if (typeof timestamp === 'string') {
+    tsSeconds = new Date(timestamp).getTime() / 1000
+  } else {
+    // 毫秒级时间戳 (>=1e12) 需除以 1000，秒级直接使用
+    tsSeconds = timestamp < 1e12 ? timestamp : timestamp / 1000
+  }
+  const ageHours = (Date.now() / 1000 - tsSeconds) / 3600
+  return ageHours > hideAfterHours
+}
+
 // ===== 时间格式化 =====
 
 /** 格式化时间戳或日期字符串为本地时间显示
