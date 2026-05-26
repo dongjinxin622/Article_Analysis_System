@@ -259,11 +259,7 @@ async function savePassword() {
                     {{ serviceStatus.postgres?.connected ? '已连接' : '未连接' }}
                   </el-tag>
                 </div>
-                <div class="service-detail" v-if="serviceStatus.postgres">
-                  <span>{{ serviceStatus.postgres.host }}:{{ serviceStatus.postgres.port }}</span>
-                  <span class="service-db">{{ serviceStatus.postgres.database }}</span>
-                </div>
-                <div class="service-detail" v-else><span>加载中...</span></div>
+                <div class="service-detail" v-if="!serviceStatus.postgres"><span>加载中...</span></div>
               </el-card>
             </el-col>
             <el-col :span="6">
@@ -274,11 +270,7 @@ async function savePassword() {
                     {{ serviceStatus.milvus?.connected ? '已连接' : '未连接' }}
                   </el-tag>
                 </div>
-                <div class="service-detail" v-if="serviceStatus.milvus">
-                  <span>{{ serviceStatus.milvus.host }}:{{ serviceStatus.milvus.port }}</span>
-                  <span v-if="serviceStatus.milvus.collections !== undefined" class="service-db">{{ serviceStatus.milvus.collections }} 个集合</span>
-                </div>
-                <div class="service-detail" v-else><span>加载中...</span></div>
+                <div class="service-detail" v-if="!serviceStatus.milvus"><span>加载中...</span></div>
               </el-card>
             </el-col>
             <el-col :span="6">
@@ -289,11 +281,7 @@ async function savePassword() {
                     {{ serviceStatus.redis?.connected ? '已连接' : '未连接' }}
                   </el-tag>
                 </div>
-                <div class="service-detail" v-if="serviceStatus.redis">
-                  <span>{{ serviceStatus.redis.host }}:{{ serviceStatus.redis.port }}</span>
-                  <span class="service-db">DB {{ serviceStatus.redis.db }}</span>
-                </div>
-                <div class="service-detail" v-else><span>加载中...</span></div>
+                <div class="service-detail" v-if="!serviceStatus.redis"><span>加载中...</span></div>
               </el-card>
             </el-col>
             <el-col :span="6">
@@ -304,10 +292,7 @@ async function savePassword() {
                     {{ serviceStatus.grobid?.connected ? '已连接' : '未连接' }}
                   </el-tag>
                 </div>
-                <div class="service-detail" v-if="serviceStatus.grobid">
-                  <span class="service-url">{{ serviceStatus.grobid.url }}</span>
-                </div>
-                <div class="service-detail" v-else><span>加载中...</span></div>
+                <div class="service-detail" v-if="!serviceStatus.grobid"><span>加载中...</span></div>
               </el-card>
             </el-col>
           </el-row>
@@ -551,7 +536,6 @@ async function savePassword() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
 }
 
 .service-card .service-title {
@@ -561,22 +545,7 @@ async function savePassword() {
 }
 
 .service-card .service-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
   font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.service-card .service-detail .service-db {
-  font-size: 12px;
-  color: var(--text-secondary);
-  opacity: 0.8;
-}
-
-.service-card .service-detail .service-url {
-  font-size: 12px;
-  word-break: break-all;
   color: var(--text-secondary);
 }
 
