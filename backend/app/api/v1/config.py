@@ -262,15 +262,103 @@ async def get_system_config(
 @router.get("/config/status", summary="获取服务状态")
 async def get_service_status():
     """
-    获取各服务连接状态（无需认证）
+    获取各服务真实连接状态（需认证）
+    对 PostgreSQL / Redis / Milvus / GROBID 逐一探测连通性
     """
     from backend.app.core.config import settings
-    return {
-        "success": True,
-        "services": {
-            "postgres": {"status": "configured"},
-            "milvus": {"host": settings.MILVUS_HOST, "port": settings.MILVUS_PORT, "status": "configured"},
-            "redis": {"host": settings.REDIS_HOST, "port": settings.REDIS_PORT, "status": "configured"},
-            "grobid": {"url": settings.GROBID_URL, "status": "configured"}
+    from sqlalchemy import text
+
+    services = {}
+
+    # ---- PostgreSQL ----
+    try:
+        from backend.app.models.base import AsyncSessionLocal
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        services["postgres"] = {
+            "host": settings.POSTGRES_HOST,
+            "port": settings.POSTGRES_PORT,
+            "database": settings.POSTGRES_DATABASE,
+            "status": "connected",
+            "connected": True,
         }
-    }
+    except Exception as e:
+        services["postgres"] = {
+            "host": settings.POSTGRES_HOST,
+            "port": settings.POSTGRES_PORT,
+            "database": settings.POSTGRES_DATABASE,
+            "status": f"error: {e}",
+            "connected": False,
+        }
+
+    # ---- Redis ----
+    try:
+        from backend.app.core.redis_client import get_redis
+        redis_client = await get_redis()
+        await redis_client.ping()
+        services["redis"] = {
+            "host": settings.REDIS_HOST,
+            "port": settings.REDIS_PORT,
+            "db": settings.REDIS_DB,
+            "status": "connected",
+            "connected": True,
+        }
+    except Exception as e:
+        services["redis"] = {
+            "host": settings.REDIS_HOST,
+            "port": settings.REDIS_PORT,
+            "db": settings.REDIS_DB,
+            "status": f"error: {e}",
+            "connected": False,
+        }
+
+    # ---- Milvus ----
+    try:
+        from pymilvus import connections, utility
+        conn_alias = "_status_probe"
+        # 避免重复连接
+        if connections.has_connection(conn_alias):
+            connections.disconnect(conn_alias)
+        connections.connect(
+            alias=conn_alias,
+            host=settings.MILVUS_HOST,
+            port=str(settings.MILVUS_PORT),
+            timeout=5,
+        )
+        # 轻量探测：列出 collection 数量
+        cols = utility.list_collections(using=conn_alias)
+        connections.disconnect(conn_alias)
+        services["milvus"] = {
+            "host": settings.MILVUS_HOST,
+            "port": settings.MILVUS_PORT,
+            "collections": len(cols),
+            "status": "connected",
+            "connected": True,
+        }
+    except Exception as e:
+        services["milvus"] = {
+            "host": settings.MILVUS_HOST,
+            "port": settings.MILVUS_PORT,
+            "status": f"error: {e}",
+            "connected": False,
+        }
+
+    # ---- GROBID ----
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{settings.GROBID_URL}/api/isalive")
+            resp.raise_for_status()
+        services["grobid"] = {
+            "url": settings.GROBID_URL,
+            "status": "connected",
+            "connected": True,
+        }
+    except Exception as e:
+        services["grobid"] = {
+            "url": settings.GROBID_URL,
+            "status": f"error: {e}",
+            "connected": False,
+        }
+
+    return {"success": True, "services": services}

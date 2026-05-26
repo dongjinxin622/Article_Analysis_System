@@ -252,26 +252,65 @@ async function savePassword() {
 
           <el-row :gutter="20">
             <el-col :span="6">
-              <el-card shadow="hover">
-                <el-statistic title="MySQL" :value="serviceStatus.mysql ? '已连接' : '—'" />
+              <el-card shadow="hover" :class="{ 'service-card': true, 'service-error': !serviceStatus.postgres?.connected }">
+                <div class="service-header">
+                  <span class="service-title">PostgreSQL</span>
+                  <el-tag :type="serviceStatus.postgres?.connected ? 'success' : 'danger'" size="small" effect="dark">
+                    {{ serviceStatus.postgres?.connected ? '已连接' : '未连接' }}
+                  </el-tag>
+                </div>
+                <div class="service-detail" v-if="serviceStatus.postgres">
+                  <span>{{ serviceStatus.postgres.host }}:{{ serviceStatus.postgres.port }}</span>
+                  <span class="service-db">{{ serviceStatus.postgres.database }}</span>
+                </div>
+                <div class="service-detail" v-else><span>加载中...</span></div>
               </el-card>
             </el-col>
             <el-col :span="6">
-              <el-card shadow="hover">
-                <el-statistic title="Milvus" :value="serviceStatus.milvus ? '已连接' : '—'" />
+              <el-card shadow="hover" :class="{ 'service-card': true, 'service-error': !serviceStatus.milvus?.connected }">
+                <div class="service-header">
+                  <span class="service-title">Milvus</span>
+                  <el-tag :type="serviceStatus.milvus?.connected ? 'success' : 'danger'" size="small" effect="dark">
+                    {{ serviceStatus.milvus?.connected ? '已连接' : '未连接' }}
+                  </el-tag>
+                </div>
+                <div class="service-detail" v-if="serviceStatus.milvus">
+                  <span>{{ serviceStatus.milvus.host }}:{{ serviceStatus.milvus.port }}</span>
+                  <span v-if="serviceStatus.milvus.collections !== undefined" class="service-db">{{ serviceStatus.milvus.collections }} 个集合</span>
+                </div>
+                <div class="service-detail" v-else><span>加载中...</span></div>
               </el-card>
             </el-col>
             <el-col :span="6">
-              <el-card shadow="hover">
-                <el-statistic title="Redis" :value="serviceStatus.redis ? '已连接' : '—'" />
+              <el-card shadow="hover" :class="{ 'service-card': true, 'service-error': !serviceStatus.redis?.connected }">
+                <div class="service-header">
+                  <span class="service-title">Redis</span>
+                  <el-tag :type="serviceStatus.redis?.connected ? 'success' : 'danger'" size="small" effect="dark">
+                    {{ serviceStatus.redis?.connected ? '已连接' : '未连接' }}
+                  </el-tag>
+                </div>
+                <div class="service-detail" v-if="serviceStatus.redis">
+                  <span>{{ serviceStatus.redis.host }}:{{ serviceStatus.redis.port }}</span>
+                  <span class="service-db">DB {{ serviceStatus.redis.db }}</span>
+                </div>
+                <div class="service-detail" v-else><span>加载中...</span></div>
               </el-card>
             </el-col>
             <el-col :span="6">
-              <el-card shadow="hover">
-                <el-statistic title="GROBID" :value="serviceStatus.grobid ? '已配置' : '—'" />
+              <el-card shadow="hover" :class="{ 'service-card': true, 'service-error': !serviceStatus.grobid?.connected }">
+                <div class="service-header">
+                  <span class="service-title">GROBID</span>
+                  <el-tag :type="serviceStatus.grobid?.connected ? 'success' : 'danger'" size="small" effect="dark">
+                    {{ serviceStatus.grobid?.connected ? '已连接' : '未连接' }}
+                  </el-tag>
+                </div>
+                <div class="service-detail" v-if="serviceStatus.grobid">
+                  <span class="service-url">{{ serviceStatus.grobid.url }}</span>
+                </div>
+                <div class="service-detail" v-else><span>加载中...</span></div>
               </el-card>
-              </el-col>
-            </el-row>
+            </el-col>
+          </el-row>
         </el-card>
       </el-tab-pane>
 
@@ -501,5 +540,47 @@ async function savePassword() {
 /* Prompt编辑器等宽字体 */
 .prompt-editor-input .el-textarea__inner {
   font-family: Consolas, Monaco, monospace;
+}
+
+/* 服务状态卡片 */
+.service-card {
+  transition: border-color 0.2s;
+}
+
+.service-card .service-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.service-card .service-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.service-card .service-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.service-card .service-detail .service-db {
+  font-size: 12px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+.service-card .service-detail .service-url {
+  font-size: 12px;
+  word-break: break-all;
+  color: var(--text-secondary);
+}
+
+.service-card.service-error {
+  border-left: 3px solid var(--el-color-danger);
 }
 </style>
