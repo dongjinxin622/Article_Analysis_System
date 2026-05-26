@@ -69,7 +69,7 @@ SciPDF 是一个面向科研人员的 AI 论文分析系统，支持从 PDF 论�
 | 缓存/消息 | Redis | 7.x |
 | 向量数据库 | Milvus | Standalone |
 | PDF 解析 | SciPDF-Parser + GROBID | 0.8.x |
-| NLP | Stanza | ≥ 1.6 |
+| NLP | Stanza + Transformers | 1.12.0 / 4.x |
 | LLM | OpenAI 兼容 API（通义千问） | - |
 | 工作流 | LangGraph + LangChain-OpenAI | ≥ 0.2 |
 | 认证 | JWT (Access + Refresh Token) | python-jose |
@@ -146,6 +146,11 @@ Article_Analysis_System_v3/
 ├── nginx/                      # Nginx 配置
 │   └── entrypoint.sh           # HTTP/HTTPS 动态切换脚本
 ├── prompts/                    # LLM Prompt 模板文件
+├── scipdf/                     # SciPDF 解析器 + Prompt 查询模板
+│   ├── ner_queries/            # NER Prompt 模板
+│   ├── re_queries/             # RE Prompt 模板
+│   └── domain_queries/         # 领域分析 Prompt 模板
+├── stanza_resources_v112/      # Stanza v1.12.0 NLP 模型（不提交 git）
 ├── scripts/                    # 项目级脚本
 ├── docker-compose.yml          # 容器编排
 ├── nginx.conf                  # Nginx 主配置
@@ -237,6 +242,89 @@ docker ps --filter "name=scipdf"
 ```bash
 docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d yourdomain.com
 ```
+
+### 运维注意事项
+
+**容器重启后登录异常**
+
+容器重启后如出现登录失败（"用户名或密码错误"），通常是 Redis 中残留的旧 Token 缓存导致。清空 Token 缓存即可恢复：
+
+```python
+# 在 backend 容器内执行
+import asyncio
+from backend.app.core.security import hash_password
+from backend.app.models.base import AsyncSessionLocal
+from backend.app.core.redis_client import get_redis
+from sqlalchemy import text
+
+async def fix():
+    async with AsyncSessionLocal() as s:
+        h = hash_password('admin123')
+        await s.execute(text("UPDATE users SET password_hash = :h WHERE username = 'admin'"), {'h': h})
+        await s.commit()
+    r = await get_redis()
+    keys = await r.keys('token:*')
+    if keys: await r.delete(*keys)
+    print(f'done, cleared {len(keys)} tokens')
+
+asyncio.run(fix())
+```
+
+**Stanza 模型**
+
+Stanza v1.12.0 NLP 模型（~324 MB）已预置在 `stanza_resources_v112/` 目录，Docker 构建时自动复制到容器内。首次 NER 处理无需额外下载。
+
+## 云端部署验证（2026-05-26）
+
+### 基础设施
+
+| 服务 | 状态 | 地址 |
+|------|------|------|
+| PostgreSQL 16 | ✅ 已连接 | 8.147.69.101:5432 |
+| Redis 7 | ✅ 已连接 | 8.147.69.101:6379 |
+| Milvus Standalone | ✅ 已连接 | 8.147.69.101:19530 |
+| GROBID | ✅ 已连接 | http://8.147.69.101:8070 |
+
+### API 功能验证（15/15 通过）
+
+| 功能 | 端点 | 状态 |
+|------|------|------|
+| 用户登录 | `POST /users/login` | ✅ |
+| 用户信息 | `GET /users/me` | ✅ |
+| 系统配置 | `GET /config/system` | ✅ |
+| 服务状态 | `GET /config/status` | ✅ |
+| Prompt 模板 | `GET /config/prompts` | ✅ |
+| 论文列表 | `GET /papers` | ✅ (34 篇) |
+| NER 结果 | `GET /ner/list` | ✅ (28 条) |
+| 领域列表 | `GET /domains` | ✅ (rebco) |
+| 任务列表 | `GET /tasks` | ✅ |
+| Jc 统计 | `GET /jc/stats` | ✅ |
+| 综合分析 | `GET /comprehensive/active` | ✅ |
+| Excel 提取 | `GET /excel-extraction/tasks` | ✅ |
+| 批量任务 | `GET /batch` | ✅ |
+| 任务统计 | `GET /tasks/statistics` | ✅ |
+| 健康检查 | `GET /health` | ✅ |
+
+### NER 端到端测试
+
+| 步骤 | 结果 |
+|------|------|
+| PDF 上传 (203 KB) | ✅ 解析成功，`result_id: 10.2478_v10177-011-0030-y` |
+| NER 处理 | ✅ 33.7 秒，提取 135 个实体，29 个分组 |
+| 实体类型分布 | Material (52), Microstructural_Hierarchy (43), Transport_Behavior (34), Manufacturing_Process (4) |
+| 示例提取 | `YBa2Cu3O7−x`, `Tm = 90 K`, `Film_Thickness = 1 μm`, `Tc_onset = 90 K` |
+| LLM API | ✅ 通义千问 (qwen3.6-plus) |
+| Embedding API | ✅ text-embedding-v4, dim=1024 |
+
+### 核心依赖版本
+
+| 组件 | 版本 | 状态 |
+|------|------|------|
+| Stanza | 1.12.0 | ✅ Pipeline 初始化 6.3s |
+| PyMuPDF | 1.27.2 | ✅ |
+| SciPDF-Parser | latest | ✅ |
+| Transformers | 4.x | ✅ (Stanza depparse 依赖) |
+| beautifulsoup4 | 4.14 | ✅ (SciPDF-Parser 依赖) |
 
 ### 本地开发
 
