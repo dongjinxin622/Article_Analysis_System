@@ -30,6 +30,7 @@ RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r re
 # 复制应用代码
 COPY backend/ ./backend/
 COPY scripts/ ./scripts/
+COPY scipdf/ ./scipdf/
 
 # 设置环境变量
 ENV PYTHONPATH=/app
