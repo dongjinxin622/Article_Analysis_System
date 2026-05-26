@@ -60,6 +60,18 @@ langchain-openai>=0.3.0
 # Word 文档解析
 python-docx>=1.1.0
 
+# JSON5 解析
+json5>=0.9.14
+
+# 图像处理
+Pillow>=10.0.0
+
+# 进度条
+tqdm>=4.65.0
+
+# PDF 解析（scipdf-parser）
+scipdf-parser>=0.1.0
+
 # 测试
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
