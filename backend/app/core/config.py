@@ -133,15 +133,18 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = ""
     CELERY_RESULT_BACKEND: str = ""
 
+    # CORS 配置（逗号分隔的域名列表，* 表示全部允许）
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
+
+    # 日志配置
+    LOG_LEVEL: str = "INFO"
+    LOG_FILE: str = str(BASE_DIR / "logs" / "app.log")
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Celery 使用 Redis 作为 broker
         self.CELERY_BROKER_URL = self.REDIS_URL
         self.CELERY_RESULT_BACKEND = self.REDIS_URL
-
-    # 日志配置
-    LOG_LEVEL: str = "INFO"
-    LOG_FILE: str = str(BASE_DIR / "logs" / "app.log")
 
     class Config:
         env_file = str(BASE_DIR / ".env")

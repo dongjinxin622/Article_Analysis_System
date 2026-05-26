@@ -30,9 +30,9 @@ ENV PYTHONUNBUFFERED=1
 # 创建数据目录
 RUN mkdir -p /app/data/uploads /app/data/results /app/data/ner_results /app/data/re_results /app/logs
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
+# 健康检查（使用标准库 urllib，无需额外安装 requests）
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
 # 启动命令
 CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

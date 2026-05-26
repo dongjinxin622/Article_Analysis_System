@@ -194,10 +194,16 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
-# 配置CORS中间件
+# 配置CORS中间件（从环境变量 CORS_ORIGINS 读取，逗号分隔）
+_cors_origins = [
+    origin.strip()
+    for origin in settings.CORS_ORIGINS.split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应配置具体域名
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

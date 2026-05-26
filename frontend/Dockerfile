@@ -22,12 +22,20 @@ FROM nginx:alpine
 # 复制构建产物
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 复制 nginx 配置
+# 复制 nginx 配置（移除默认 default.conf 避免冲突）
+RUN rm -f /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/nginx.conf
+
+# 复制入口脚本（动态 HTTP/HTTPS 切换）
+COPY nginx/entrypoint.sh /docker-entrypoint.d/entrypoint.sh
+RUN chmod +x /docker-entrypoint.d/entrypoint.sh
+
+# 创建 certbot 验证目录
+RUN mkdir -p /var/www/certbot
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
 
-# 启动 nginx
-CMD ["nginx", "-g", "daemon off;"]
+# 使用入口脚本启动（根据证书自动切换 HTTP/HTTPS）
+CMD ["/docker-entrypoint.d/entrypoint.sh"]
