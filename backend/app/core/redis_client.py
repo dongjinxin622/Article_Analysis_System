@@ -13,7 +13,10 @@ _redis_client: Optional[aioredis.Redis] = None
 
 
 async def get_redis() -> aioredis.Redis:
-    """获取 Redis 异步客户端单例，首次调用时自动初始化连接"""
+    """获取 Redis 异步客户端单例，首次调用时自动初始化连接
+
+    当已缓存的连接不可用时（断线/超时），自动重置并重新建立连接。
+    """
     global _redis_client
     if _redis_client is None:
         _redis_client = aioredis.from_url(
@@ -21,8 +24,25 @@ async def get_redis() -> aioredis.Redis:
             decode_responses=True,
             encoding="utf-8",
         )
-        await _redis_client.ping()
-        logger.info("Redis 连接已建立: %s", settings.REDIS_URL)
+        try:
+            await _redis_client.ping()
+            logger.info("Redis 连接已建立: %s", settings.REDIS_URL)
+        except Exception:
+            _redis_client = None
+            raise
+    else:
+        # 检测已缓存连接是否仍然可用
+        try:
+            await _redis_client.ping()
+        except Exception as exc:
+            logger.warning("Redis 连接已断开 (%s)，正在重新连接...", exc)
+            try:
+                await _redis_client.close()
+            except Exception:
+                pass
+            _redis_client = None
+            # 递归重试一次
+            return await get_redis()
     return _redis_client
 
 

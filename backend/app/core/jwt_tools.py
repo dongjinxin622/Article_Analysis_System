@@ -23,8 +23,17 @@ def _token_cache_key(jti: str) -> str:
 
 
 async def _cache_token(jti: str, public_id: str, token_type: str, expires_at: int) -> None:
-    """将 token 标识缓存到 Redis，用于后续校验和吊销"""
-    redis_client = await _redis_client.get_redis()
+    """将 token 标识缓存到 Redis，用于后续校验和吊销
+
+    Redis 不可用时静默跳过（仅记录告警），令牌仍可签发，
+    但在 Redis 恢复前该令牌无法被服务端主动吊销。
+    """
+    try:
+        redis_client = await _redis_client.get_redis()
+    except Exception as exc:
+        logger.warning("Redis 不可用，跳过 token jti 缓存: %s", exc)
+        return
+
     ttl_seconds = expires_at - int(datetime.now(timezone.utc).timestamp())
     if ttl_seconds <= 0:
         return
@@ -37,7 +46,10 @@ async def _cache_token(jti: str, public_id: str, token_type: str, expires_at: in
         },
         separators=(",", ":"),
     )
-    await redis_client.set(_token_cache_key(jti), value, ex=ttl_seconds)
+    try:
+        await redis_client.set(_token_cache_key(jti), value, ex=ttl_seconds)
+    except Exception as exc:
+        logger.warning("Redis 写入失败，token jti 未缓存: %s", exc)
 
 
 async def _create_token(public_id: str, username: str, token_type: str, expires_seconds: int) -> tuple:
@@ -98,6 +110,10 @@ async def create_login_tokens(public_id: str, username: str) -> dict:
 async def decode_token(token: str, *, refresh_access_ttl: bool = False) -> dict:
     """解析并校验 JWT，同时验证 Redis 中的 jti 存在性
 
+    当 Redis 不可用时自动降级为纯 JWT 校验（签名 + exp），
+    保证认证服务不会因 Redis 故障而全面中断。
+    降级期间的代价：已被吊销但 JWT 尚未过期的令牌会被放行。
+
     Args:
         token: 待解析的 JWT 字符串
         refresh_access_ttl: 是否续期 access token 在 Redis 中的 TTL
@@ -106,10 +122,9 @@ async def decode_token(token: str, *, refresh_access_ttl: bool = False) -> dict:
         解析后的 token payload
 
     Raises:
-        ValueError: 令牌已被吊销或无效
+        ValueError: 令牌无效或已过期
     """
-    redis_client = await _redis_client.get_redis()
-
+    # Step 1: JWT 签名 + exp 校验（不依赖 Redis，始终执行）
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except JWTError as exc:
@@ -119,14 +134,25 @@ async def decode_token(token: str, *, refresh_access_ttl: bool = False) -> dict:
     if not jti:
         raise ValueError("令牌格式无效")
 
-    cache_key = _token_cache_key(jti)
-    cached = await redis_client.get(cache_key)
-    if cached is None:
-        raise ValueError("令牌已被吊销或已过期")
+    # Step 2: Redis jti 校验（Redis 不可用时降级跳过）
+    try:
+        redis_client = await _redis_client.get_redis()
+        cache_key = _token_cache_key(jti)
+        cached = await redis_client.get(cache_key)
+        if cached is None:
+            raise ValueError("令牌已被吊销或已过期")
 
-    # 续期 access token 的 Redis TTL
-    if refresh_access_ttl and payload.get("type") == "access":
-        await redis_client.expire(cache_key, settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+        # 续期 access token 的 Redis TTL
+        if refresh_access_ttl and payload.get("type") == "access":
+            await redis_client.expire(cache_key, settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+    except ValueError:
+        # jti 校验失败（令牌确实被吊销），严格拒绝
+        raise
+    except Exception as exc:
+        # Redis 连接异常 - 降级为纯 JWT 模式，记录告警
+        logger.warning(
+            "Redis 不可用，令牌校验降级为纯 JWT 模式: %s", exc
+        )
 
     return payload
 
@@ -163,7 +189,14 @@ async def create_access_token_from_refresh_token(refresh_token: str) -> dict:
 
 
 async def revoke_token(jti: str) -> None:
-    """从 Redis 中吊销指定 token"""
-    redis_client = await _redis_client.get_redis()
-    await redis_client.delete(_token_cache_key(jti))
-    logger.debug("已吊销 token: %s...", jti[:16])
+    """从 Redis 中吊销指定 token
+
+    Redis 不可用时静默跳过（仅记录告警），
+    代价是被吊销的 token 在 JWT 过期前仍可降级通过校验。
+    """
+    try:
+        redis_client = await _redis_client.get_redis()
+        await redis_client.delete(_token_cache_key(jti))
+        logger.debug("已吊销 token: %s...", jti[:16])
+    except Exception as exc:
+        logger.warning("Redis 不可用，token 吊销延迟 (jti=%s...): %s", jti[:16], exc)
