@@ -12,6 +12,7 @@ build/
 
 # ===== 大型模型与第三方库 =====
 stanza_resources/
+stanza_resources_v112/
 scipdf/
 
 # ===== Node.js =====
