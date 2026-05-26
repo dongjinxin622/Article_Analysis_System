@@ -1,0 +1,53 @@
+# Docker 构建上下文排除（减少传输体积，加速构建）
+
+# 大型模型文件（通过 volume 挂载）
+stanza_resources_v112/
+stanza_resources/
+
+# scipdf 第三方库（通过 volume 挂载）
+scipdf/
+
+# 数据目录
+data/
+batch_results/
+results/
+outputs/
+logs/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 文档（不需要进容器）
+*.md
+plan/
+docs/
+
+# 临时文件
+*.tmp
+*.bak
+*.pkl
+*.log
+
+# 测试文件
+tests/
+*.test.*
+*.spec.*
+
+# 上传文件
+excel_section_test_sample/
+sample/
+
+# PDF 文件
+*.pdf

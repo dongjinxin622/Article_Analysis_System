@@ -27,11 +27,9 @@ COPY backend/requirements.txt .
 # 安装其余 Python 依赖（清华 PyPI 镜像加速，torch 已安装会被跳过）
 RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
-# 复制应用代码
+# 复制应用代码（scipdf/ 和 stanza_resources 通过 volume 挂载，不进镜像）
 COPY backend/ ./backend/
 COPY scripts/ ./scripts/
-COPY scipdf/ ./scipdf/
-COPY stanza_resources_v112/ ./stanza_resources/
 
 # 设置环境变量
 ENV PYTHONPATH=/app

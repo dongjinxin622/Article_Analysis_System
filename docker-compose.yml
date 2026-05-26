@@ -37,6 +37,8 @@ services:
     volumes:
       - backend-data:/app/data
       - backend-logs:/app/logs
+      - ./stanza_resources_v112:/app/stanza_resources:ro
+      - ./scipdf:/app/scipdf:ro
     networks:
       - scipdf-network
     restart: unless-stopped
@@ -61,6 +63,8 @@ services:
     volumes:
       - backend-data:/app/data
       - backend-logs:/app/logs
+      - ./stanza_resources_v112:/app/stanza_resources:ro
+      - ./scipdf:/app/scipdf:ro
     depends_on:
       - backend
     networks:
