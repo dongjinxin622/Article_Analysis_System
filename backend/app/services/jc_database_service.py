@@ -94,7 +94,7 @@ class JcDatabaseService:
                 angle_equiv = angle % 180
                 conditions.append(
                     f'("angle_deg" IS NULL OR '
-                    f'ABS((("angle_deg" % 180) + 180) % 180 - ${param_idx}) <= ${param_idx + 1})'
+                    f'ABS(MOD(MOD("angle_deg", 180) + 180, 180) - ${param_idx}) <= ${param_idx + 1})'
                 )
                 params.extend([angle_equiv, angle_tol])
                 param_idx += 1
@@ -223,7 +223,7 @@ class JcDatabaseService:
                 angle_equiv = angle % 180
                 conditions.append(
                     f'("angle_deg" IS NULL OR '
-                    f'ABS((("angle_deg" % 180) + 180) % 180 - ${param_idx}) <= ${param_idx + 1})'
+                    f'ABS(MOD(MOD("angle_deg", 180) + 180, 180) - ${param_idx}) <= ${param_idx + 1})'
                 )
                 params.extend([angle_equiv, angle_tol])
                 param_idx += 1
