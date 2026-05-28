@@ -65,16 +65,16 @@ class JcDatabaseService:
         try:
             conn = await self._get_connection()
 
-            conditions = ["jc_value IS NOT NULL"]
+            conditions = ['"jc_value" IS NOT NULL']
             params = []
             param_idx = 0
 
             if temperature is not None:
                 param_idx += 1
                 conditions.append(
-                    f"temperature_K IS NOT NULL AND "
-                    f"temperature_K >= ${param_idx} AND "
-                    f"temperature_K <= ${param_idx + 1}"
+                    f'"temperature_K" IS NOT NULL AND '
+                    f'"temperature_K" >= ${param_idx} AND '
+                    f'"temperature_K" <= ${param_idx + 1}'
                 )
                 params.extend([temperature - temp_tol, temperature + temp_tol])
                 param_idx += 1
@@ -82,9 +82,9 @@ class JcDatabaseService:
             if magnetic_field is not None:
                 param_idx += 1
                 conditions.append(
-                    f"magnetic_field_T IS NOT NULL AND "
-                    f"magnetic_field_T >= ${param_idx} AND "
-                    f"magnetic_field_T <= ${param_idx + 1}"
+                    f'"magnetic_field_T" IS NOT NULL AND '
+                    f'"magnetic_field_T" >= ${param_idx} AND '
+                    f'"magnetic_field_T" <= ${param_idx + 1}'
                 )
                 params.extend([magnetic_field - field_tol, magnetic_field + field_tol])
                 param_idx += 1
@@ -93,25 +93,25 @@ class JcDatabaseService:
                 param_idx += 1
                 angle_equiv = angle % 180
                 conditions.append(
-                    f"(angle_deg IS NULL OR "
-                    f"ABS(((angle_deg % 180) + 180) % 180 - ${param_idx}) <= ${param_idx + 1})"
+                    f'("angle_deg" IS NULL OR '
+                    f'ABS((("angle_deg" % 180) + 180) % 180 - ${param_idx}) <= ${param_idx + 1})'
                 )
                 params.extend([angle_equiv, angle_tol])
                 param_idx += 1
 
             if min_jc is not None:
                 param_idx += 1
-                conditions.append(f"jc_value >= ${param_idx}")
+                conditions.append(f'"jc_value" >= ${param_idx}')
                 params.append(min_jc)
 
             param_idx += 1
             where_clause = " AND ".join(conditions)
 
             sql = f"""
-                SELECT "DOI", jc_value, jc_unit, temperature_K, magnetic_field_T, angle_deg
+                SELECT "DOI", "jc_value", "jc_unit", "temperature_K", "magnetic_field_T", "angle_deg"
                 FROM jc_indices_raw
                 WHERE {where_clause}
-                ORDER BY jc_value DESC
+                ORDER BY "jc_value" DESC
                 LIMIT ${param_idx}
             """
             params.append(top_k)
@@ -175,7 +175,7 @@ class JcDatabaseService:
 
             # 1. 获取目标论文的 Jc 数据
             target_sql = """
-                SELECT "DOI", jc_value, temperature_K, magnetic_field_T, angle_deg
+                SELECT "DOI", "jc_value", "temperature_K", "magnetic_field_T", "angle_deg"
                 FROM jc_indices_raw
                 WHERE "DOI" = $1
             """
@@ -194,16 +194,16 @@ class JcDatabaseService:
             target_jc_max = max(target_jc_values) if target_jc_values else 0
 
             # 2. 搜索相同条件的所有记录
-            conditions = ["jc_value IS NOT NULL"]
+            conditions = ['"jc_value" IS NOT NULL']
             params = []
             param_idx = 0
 
             if temperature is not None:
                 param_idx += 1
                 conditions.append(
-                    f"temperature_K IS NOT NULL AND "
-                    f"temperature_K >= ${param_idx} AND "
-                    f"temperature_K <= ${param_idx + 1}"
+                    f'"temperature_K" IS NOT NULL AND '
+                    f'"temperature_K" >= ${param_idx} AND '
+                    f'"temperature_K" <= ${param_idx + 1}'
                 )
                 params.extend([temperature - temp_tol, temperature + temp_tol])
                 param_idx += 1
@@ -211,9 +211,9 @@ class JcDatabaseService:
             if magnetic_field is not None:
                 param_idx += 1
                 conditions.append(
-                    f"magnetic_field_T IS NOT NULL AND "
-                    f"magnetic_field_T >= ${param_idx} AND "
-                    f"magnetic_field_T <= ${param_idx + 1}"
+                    f'"magnetic_field_T" IS NOT NULL AND '
+                    f'"magnetic_field_T" >= ${param_idx} AND '
+                    f'"magnetic_field_T" <= ${param_idx + 1}'
                 )
                 params.extend([magnetic_field - field_tol, magnetic_field + field_tol])
                 param_idx += 1
@@ -222,8 +222,8 @@ class JcDatabaseService:
                 param_idx += 1
                 angle_equiv = angle % 180
                 conditions.append(
-                    f"(angle_deg IS NULL OR "
-                    f"ABS(((angle_deg % 180) + 180) % 180 - ${param_idx}) <= ${param_idx + 1})"
+                    f'("angle_deg" IS NULL OR '
+                    f'ABS((("angle_deg" % 180) + 180) % 180 - ${param_idx}) <= ${param_idx + 1})'
                 )
                 params.extend([angle_equiv, angle_tol])
                 param_idx += 1
@@ -231,7 +231,7 @@ class JcDatabaseService:
             where_clause = " AND ".join(conditions)
 
             search_sql = f"""
-                SELECT "DOI", MAX(jc_value) as jc_max
+                SELECT "DOI", MAX("jc_value") as jc_max
                 FROM jc_indices_raw
                 WHERE {where_clause}
                 GROUP BY "DOI"
@@ -257,9 +257,9 @@ class JcDatabaseService:
             # 如果在条件范围内找不到目标DOI，回退到无条件排名
             if target_rank is None:
                 fallback_sql = """
-                    SELECT "DOI", MAX(jc_value) as jc_max
+                    SELECT "DOI", MAX("jc_value") as jc_max
                     FROM jc_indices_raw
-                    WHERE jc_value IS NOT NULL
+                    WHERE "jc_value" IS NOT NULL
                     GROUP BY "DOI"
                     ORDER BY jc_max DESC
                 """
@@ -289,7 +289,7 @@ class JcDatabaseService:
 
             return {
                 "success": True,
-                "message": "排名计算完成",
+                "message": "排名计算完毕",
                 "target_doi": target_doi,
                 "target_jc_max": target_jc_max,
                 "target_rank": target_rank,
@@ -322,7 +322,7 @@ class JcDatabaseService:
 
             # 统计总数
             row = await conn.fetchrow(
-                'SELECT COUNT(*) as total FROM jc_indices_raw WHERE jc_value IS NOT NULL'
+                'SELECT COUNT(*) as total FROM jc_indices_raw WHERE "jc_value" IS NOT NULL'
             )
             total = row.get("total", 0) if row else 0
 
@@ -360,14 +360,14 @@ class JcDatabaseService:
         try:
             conn = await self._get_connection()
 
-            conditions = ["jc_value IS NOT NULL"]
+            conditions = ['"jc_value" IS NOT NULL']
             params = []
             param_idx = 0
 
             if temperature is not None:
                 param_idx += 1
                 conditions.append(
-                    f"temperature_K >= ${param_idx} AND temperature_K <= ${param_idx + 1}"
+                    f'"temperature_K" >= ${param_idx} AND "temperature_K" <= ${param_idx + 1}'
                 )
                 params.extend([temperature - 10, temperature + 10])
                 param_idx += 1
@@ -375,7 +375,7 @@ class JcDatabaseService:
             if magnetic_field is not None:
                 param_idx += 1
                 conditions.append(
-                    f"magnetic_field_T >= ${param_idx} AND magnetic_field_T <= ${param_idx + 1}"
+                    f'"magnetic_field_T" >= ${param_idx} AND "magnetic_field_T" <= ${param_idx + 1}'
                 )
                 params.extend([magnetic_field - 2, magnetic_field + 2])
                 param_idx += 1
@@ -384,9 +384,9 @@ class JcDatabaseService:
             param_idx += 1
 
             sql = f"""
-                SELECT "DOI", MAX(jc_value) as jc_max,
-                       AVG(temperature_K) as avg_temp,
-                       AVG(magnetic_field_T) as avg_field
+                SELECT "DOI", MAX("jc_value") as jc_max,
+                       AVG("temperature_K") as avg_temp,
+                       AVG("magnetic_field_T") as avg_field
                 FROM jc_indices_raw
                 WHERE {where_clause}
                 GROUP BY "DOI"
