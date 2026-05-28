@@ -634,16 +634,12 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     logger.exception(f"[WebSocket] 处理工作流结果异常: {session_id}")
                     workflow_task = None
 
-                if session_id in _running_agents:
-                    del _running_agents[session_id]
-
             # 接收消息（带超时，以便定期检查工作流状态）
             try:
                 data = await asyncio.wait_for(websocket.receive_json(), timeout=1.0)
             except asyncio.TimeoutError:
                 continue
 
-            print(f"[WS] 收到消息: {data.get('type', 'unknown')}")
             logger.info(f"[WebSocket] 收到消息: {data.get('type', 'unknown')}")
 
             message_type = data.get("type", "")
@@ -719,7 +715,6 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 action = data.get("action", "")
                 extra_data = data.get("data", {})
 
-                print(f"[WS user_input] input_type={input_type}, action={action}, text_len={len(text)}")
                 logger.info(f"[user_input] input_type={input_type}, action={action}, text_len={len(text)}")
 
                 # 设置用户动作，唤醒等待中的工作流
@@ -728,15 +723,18 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     action or "text_input",
                     {"text": text, "action": action, "data": extra_data}
                 )
-                print(f"[WS user_input] handle_user_action completed")
 
             elif message_type == "cancel":
                 # 取消任务
                 if workflow_task and not workflow_task.done():
                     workflow_task.cancel()
                 if session_id in _running_agents:
-                    _running_agents[session_id].stop()
-                    del _running_agents[session_id]
+                    try:
+                        _running_agents[session_id].stop()
+                    except Exception as e:
+                        logger.warning(f"[WebSocket] 停止 Agent 异常: {e}")
+                    finally:
+                        del _running_agents[session_id]
                 await manager.send_message(session_id, {
                     "type": "cancelled",
                     "content": {"message": "任务已取消"}
@@ -744,14 +742,13 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
     except WebSocketDisconnect:
         manager.disconnect(session_id)
-        await cleanup_session(session_id)
+        try:
+            await cleanup_session(session_id)
+        except Exception as e:
+            logger.warning(f"[WebSocket] cleanup_session 异常: {session_id}, {e}")
 
         # WebSocket 断开时不取消工作流，让它完成后自动更新数据库
-        # run_workflow_bg 中的 _update_task_on_completion 会处理
         logger.info(f"[WebSocket] 连接断开: {session_id}，工作流将继续在后台运行")
-
-        if session_id in _running_agents:
-            del _running_agents[session_id]
 
     except Exception as e:
         logger.exception(f"WebSocket 异常: {session_id}")
@@ -764,23 +761,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
 def _task_to_response(task: ExcelExtractionTask) -> TaskDetailResponse:
     """转换数据库任务到响应格式"""
-    # 强制打印确保代码执行
-    print(f"[DEBUG] _task_to_response called for task_id={task.task_id}")
-    print(f"[DEBUG] task.session_id value = '{task.session_id}'")
-
-    # 详细调试日志
-    logger.info(f"[TaskToResponse] ===== 开始转换 =====")
-    logger.info(f"[TaskToResponse] task.task_id={task.task_id}")
-    logger.info(f"[TaskToResponse] task.session_id={repr(task.session_id)}")
-
-    # 创建 response，显式指定 session_id
-    session_id_value = task.session_id if task.session_id else None
-    print(f"[DEBUG] Will create TaskDetailResponse with session_id='{session_id_value}'")
-
-    response = TaskDetailResponse(
+    return TaskDetailResponse(
         task_id=task.task_id,
         task_name=task.task_name or "",
-        session_id=session_id_value,  # 显式指定
+        session_id=task.session_id,
         status=ExcelExtractionTaskStatus(task.status),
         total_rows=task.total_rows or 0,
         processed_rows=task.processed_rows or 0,
@@ -798,12 +782,6 @@ def _task_to_response(task: ExcelExtractionTask) -> TaskDetailResponse:
         error_message=task.error_message,
         output_file_path=task.output_file_path,
     )
-
-    # 验证 response 的 session_id
-    print(f"[DEBUG] response.session_id = '{response.session_id}'")
-    print(f"[DEBUG] response.model_dump() session_id = '{response.model_dump().get('session_id')}'")
-
-    return response
 
 
 def _row_to_response(row: ExcelExtractionRow) -> RowDetailResponse:

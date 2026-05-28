@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch, watchEffect } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Download, Refresh, UploadFilled } from '@element-plus/icons-vue'
 import { marked } from 'marked'
@@ -39,6 +39,9 @@ const historyTasks = ref<TaskDetail[]>([])
 
 // WebSocket
 const ws = ref<ReturnType<typeof useExcelExtractionWs> | null>(null)
+
+// watchEffect 同步器句柄
+let syncStopper: (() => void) | null = null
 
 // WebSocket 状态
 const isConnected = ref(false)
@@ -152,60 +155,37 @@ async function createTaskAndStart() {
         task_id: currentTaskId.value,
       })
 
-      // 监听状态变化（每 200ms 更新一次，更快响应）
-      const intervalId = setInterval(() => {
-        if (!ws.value) {
-          clearInterval(intervalId)
-          return
-        }
+      // 响应式同步 WebSocket 状态（替代轮询）
+      if (syncStopper) syncStopper()
+      syncStopper = watchEffect(() => {
+        if (!ws.value) return
         const instance = ws.value
 
-        // 正确读取 ref 值（考虑 Vue Proxy 自动解包）
-        const checkRef = (val: any) => {
-          if (typeof val === 'boolean' || typeof val === 'number' || typeof val === 'string') {
-            return val
-          }
-          if (val && typeof val === 'object' && '__v_isRef' in val) {
-            return val.value
-          }
-          return val ?? false
-        }
+        isConnected.value = instance.isConnected.value ?? false
+        progress.value = instance.progress.value ?? 0
+        progressMessage.value = instance.progressMessage.value ?? ''
+        currentStepName.value = instance.currentStep.value ?? ''
+        logs.value = Array.isArray(instance.logs.value) ? [...instance.logs.value] : []
+        chatHistory.value = Array.isArray(instance.chatHistory.value) ? [...instance.chatHistory.value] : []
+        currentLLMMessage.value = instance.currentLLMMessage.value ?? ''
+        suggestedActions.value = instance.suggestedActions.value ?? []
+        issueDetails.value = instance.issueDetails.value ?? null
+        hitlPending.value = instance.hitlPending.value ?? false
+        isCompleted.value = instance.isCompleted.value ?? false
+        isFailed.value = instance.isFailed.value ?? false
+        errorMessage.value = instance.errorMessage.value ?? ''
+        resultsSummary.value = instance.resultsSummary.value ?? null
 
-        isConnected.value = checkRef(instance.isConnected)
-
-        if (instance.logs) {
-          progress.value = checkRef(instance.progress) ?? 0
-          progressMessage.value = checkRef(instance.progressMessage) ?? ''
-          currentStepName.value = checkRef(instance.currentStep) ?? ''
-
-          const logsArray = checkRef(instance.logs)
-          logs.value = Array.isArray(logsArray) ? [...logsArray] : []
-
-          const chatArray = checkRef(instance.chatHistory)
-          chatHistory.value = Array.isArray(chatArray) ? [...chatArray] : []
-
-          currentLLMMessage.value = checkRef(instance.currentLLMMessage) ?? ''
-          suggestedActions.value = checkRef(instance.suggestedActions) ?? []
-          issueDetails.value = checkRef(instance.issueDetails) ?? null
-          hitlPending.value = checkRef(instance.hitlPending) ?? false
-          isCompleted.value = checkRef(instance.isCompleted) ?? false
-          isFailed.value = checkRef(instance.isFailed) ?? false
-          errorMessage.value = checkRef(instance.errorMessage) ?? ''
-          resultsSummary.value = checkRef(instance.resultsSummary) ?? null
-
-          if (isCompleted.value || isFailed.value) {
-            currentStep.value = 3
-            clearInterval(intervalId)
-            fetchHistoryTasks()
-            // 任务完成时自动提示用户下载
-            if (isCompleted.value) {
-              setTimeout(() => {
-                ElMessage.success('任务完成！请下载结果文件')
-              }, 300)
-            }
+        if (isCompleted.value || isFailed.value) {
+          currentStep.value = 3
+          syncStopper?.()
+          syncStopper = null
+          fetchHistoryTasks()
+          if (isCompleted.value) {
+            setTimeout(() => ElMessage.success('任务完成！请下载结果文件'), 300)
           }
         }
-      }, 200)
+      })
 
       ElMessage.success('任务已启动')
     } else {
@@ -331,6 +311,7 @@ function resetAndStartNew() {
   previewData.value = null
   sessionId.value = ''
   currentTaskId.value = ''
+  if (syncStopper) { syncStopper(); syncStopper = null }
   ws.value?.disconnect()
   ws.value = null
 }
@@ -416,71 +397,39 @@ async function resumeTaskMonitoring(task: TaskDetail) {
       }
 
       // 立即更新连接状态
-      const wsInstance = ws.value
+      isConnected.value = ws.value?.isConnected?.value ?? false
 
-      // 正确读取：先检查类型，如果是对象再检查是否是 Ref
-      const val = wsInstance?.isConnected
-      if (typeof val === 'boolean') {
-        isConnected.value = val
-      } else if (val && typeof val === 'object' && '__v_isRef' in val) {
-        isConnected.value = val.value
-      } else {
-        isConnected.value = false
-      }
-
-      // 开始监控状态变化
-      const intervalId = setInterval(() => {
-        if (!ws.value) {
-          clearInterval(intervalId)
-          return
-        }
+      // 响应式同步 WebSocket 状态（替代轮询）
+      if (syncStopper) syncStopper()
+      syncStopper = watchEffect(() => {
+        if (!ws.value) return
         const instance = ws.value
-        if (instance) {
-          // 正确读取 ref 值（考虑 Vue Proxy 自动解包）
-          const checkRef = (val: any) => {
-            if (typeof val === 'boolean' || typeof val === 'number' || typeof val === 'string') {
-              return val
-            }
-            if (val && typeof val === 'object' && '__v_isRef' in val) {
-              return val.value
-            }
-            return val ?? false
-          }
 
-          isConnected.value = checkRef(instance.isConnected)
+        isConnected.value = instance.isConnected.value ?? false
+        progress.value = instance.progress.value ?? 0
+        progressMessage.value = instance.progressMessage.value ?? ''
+        currentStepName.value = instance.currentStep.value ?? ''
+        logs.value = Array.isArray(instance.logs.value) ? [...instance.logs.value] : []
+        chatHistory.value = Array.isArray(instance.chatHistory.value) ? [...instance.chatHistory.value] : []
+        currentLLMMessage.value = instance.currentLLMMessage.value ?? ''
+        suggestedActions.value = instance.suggestedActions.value ?? []
+        issueDetails.value = instance.issueDetails.value ?? null
+        hitlPending.value = instance.hitlPending.value ?? false
+        isCompleted.value = instance.isCompleted.value ?? false
+        isFailed.value = instance.isFailed.value ?? false
+        errorMessage.value = instance.errorMessage.value ?? ''
+        resultsSummary.value = instance.resultsSummary.value ?? null
 
-          progress.value = checkRef(instance.progress) ?? 0
-          progressMessage.value = checkRef(instance.progressMessage) ?? ''
-          currentStepName.value = checkRef(instance.currentStep) ?? ''
-
-          const logsArray = checkRef(instance.logs)
-          logs.value = Array.isArray(logsArray) ? [...logsArray] : []
-
-          const chatArray = checkRef(instance.chatHistory)
-          chatHistory.value = Array.isArray(chatArray) ? [...chatArray] : []
-
-          currentLLMMessage.value = checkRef(instance.currentLLMMessage) ?? ''
-          suggestedActions.value = checkRef(instance.suggestedActions) ?? []
-          issueDetails.value = checkRef(instance.issueDetails) ?? null
-          hitlPending.value = checkRef(instance.hitlPending) ?? false
-          isCompleted.value = checkRef(instance.isCompleted) ?? false
-          isFailed.value = checkRef(instance.isFailed) ?? false
-          errorMessage.value = checkRef(instance.errorMessage) ?? ''
-          resultsSummary.value = checkRef(instance.resultsSummary) ?? null
-
-          if (isCompleted.value || isFailed.value) {
-            currentStep.value = 3
-            clearInterval(intervalId)
-            fetchHistoryTasks()
-            // 任务完成时自动提示用户下载
-            if (isCompleted.value) {
-              setTimeout(() => {
-                ElMessage.success('任务完成！请下载结果文件')
-              }, 300)
-            }
+        if (isCompleted.value || isFailed.value) {
+          currentStep.value = 3
+          syncStopper?.()
+          syncStopper = null
+          fetchHistoryTasks()
+          if (isCompleted.value) {
+            setTimeout(() => ElMessage.success('任务完成！请下载结果文件'), 300)
           }
         }
-      }, 200)
+      })
 
       ElMessage.success('已恢复任务监控')
     } else if (task.status === 'completed') {
@@ -508,6 +457,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (syncStopper) { syncStopper(); syncStopper = null }
   ws.value?.disconnect()
 })
 </script>

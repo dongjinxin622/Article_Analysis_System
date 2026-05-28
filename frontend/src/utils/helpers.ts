@@ -115,34 +115,16 @@ export function getTypeColor(typeName: string): string {
 
 // ===== Markdown 安全渲染 =====
 
-/** 移除危险HTML标签，保留安全的Markdown渲染内容 */
+import DOMPurify from 'dompurify'
+
+/** 使用 DOMPurify 移除危险 HTML 标签，保留安全的 Markdown 渲染内容 */
 export function sanitizeHtml(html: string): string {
-  let safe = html
-
-  // 多轮替换防止嵌套标签绕过 (如 <scr<script>ipt>)
-  let prev = ''
-  while (prev !== safe) {
-    prev = safe
-    safe = safe.replace(/<script[\s\S]*?<\/script>/gi, '')
-    safe = safe.replace(/<style[\s\S]*?<\/style>/gi, '')
-    safe = safe.replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
-    safe = safe.replace(/<object[\s\S]*?<\/object>/gi, '')
-    safe = safe.replace(/<embed[\s\S]*?>/gi, '')
-    safe = safe.replace(/<form[\s\S]*?<\/form>/gi, '')
-    safe = safe.replace(/<link[^>]*>/gi, '')
-    safe = safe.replace(/<svg[\s\S]*?<\/svg>/gi, '')
-    safe = safe.replace(/<meta[^>]*>/gi, '')
-  }
-
-  // 移除 on* 事件属性
-  safe = safe.replace(/\s+on\w+\s*=\s*["][^"]*["]/gi, '')
-  safe = safe.replace(/\s+on\w+\s*=\s*['][^']*[']/gi, '')
-  safe = safe.replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '')
-
-  // 移除 javascript: 和 data: 伪协议
-  safe = safe.replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"')
-  safe = safe.replace(/src\s*=\s*["']javascript:[^"']*["']/gi, 'src="#"')
-  safe = safe.replace(/src\s*=\s*["']data:text\/html[^"']*["']/gi, 'src="#"')
-
-  return safe
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li',
+      'code', 'pre', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'span', 'div',
+      'sup', 'sub', 'del', 's', 'img'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class'],
+    ALLOW_DATA_ATTR: false,
+  })
 }

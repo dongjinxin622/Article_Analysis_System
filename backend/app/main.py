@@ -17,7 +17,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from backend.app.core.config import settings, ensure_directories, BASE_DIR
 from backend.app.models.base import init_db, AsyncSessionLocal
 from backend.app.api.v1 import pdf, ner, re, batch, domain, extraction, user, config, task, excel_extraction, jc, comprehensive
-from backend.app.api import websocket
 from backend.app.domain import DomainRegistry
 from backend.app.domain.material import REBCOAnalyzer  # 导入以触发装饰器注册
 
@@ -225,9 +224,6 @@ app.include_router(task.router, prefix=settings.API_V1_PREFIX, tags=["任务管�
 app.include_router(excel_extraction.router, prefix=settings.API_V1_PREFIX, tags=["Excel批量提取"])
 app.include_router(jc.router, prefix=settings.API_V1_PREFIX, tags=["Jc数据库搜索"])
 app.include_router(comprehensive.router, prefix=settings.API_V1_PREFIX, tags=["综合分析"])
-
-# WebSocket 路由
-app.include_router(websocket.router, tags=["WebSocket"])
 
 
 # 全局异常处理器 - 捕获所有未处理的异常
