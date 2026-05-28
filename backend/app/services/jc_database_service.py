@@ -92,9 +92,13 @@ class JcDatabaseService:
             if angle is not None:
                 param_idx += 1
                 angle_equiv = angle % 180
+                # 角度是循环量（0° 和 180° 相等），需用 LEAST 处理环绕
                 conditions.append(
                     f'("angle_deg" IS NULL OR '
-                    f'ABS(MOD(MOD(CAST("angle_deg" AS numeric), 180) + 180, 180) - ${param_idx}) <= ${param_idx + 1})'
+                    f'LEAST('
+                    f'ABS(MOD(MOD(CAST("angle_deg" AS numeric), 180) + 180, 180) - ${param_idx}),'
+                    f'180 - ABS(MOD(MOD(CAST("angle_deg" AS numeric), 180) + 180, 180) - ${param_idx})'
+                    f') <= ${param_idx + 1})'
                 )
                 params.extend([angle_equiv, angle_tol])
                 param_idx += 1
@@ -221,9 +225,13 @@ class JcDatabaseService:
             if angle is not None:
                 param_idx += 1
                 angle_equiv = angle % 180
+                # 角度是循环量（0° 和 180° 相等），需用 LEAST 处理环绕
                 conditions.append(
                     f'("angle_deg" IS NULL OR '
-                    f'ABS(MOD(MOD(CAST("angle_deg" AS numeric), 180) + 180, 180) - ${param_idx}) <= ${param_idx + 1})'
+                    f'LEAST('
+                    f'ABS(MOD(MOD(CAST("angle_deg" AS numeric), 180) + 180, 180) - ${param_idx}),'
+                    f'180 - ABS(MOD(MOD(CAST("angle_deg" AS numeric), 180) + 180, 180) - ${param_idx})'
+                    f') <= ${param_idx + 1})'
                 )
                 params.extend([angle_equiv, angle_tol])
                 param_idx += 1
