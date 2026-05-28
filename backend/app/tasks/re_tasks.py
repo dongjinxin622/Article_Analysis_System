@@ -8,6 +8,7 @@ RE（关系抽取）处理 Celery 任务
 import asyncio
 import uuid
 import json
+import os
 from typing import Dict, Any, List
 from loguru import logger
 
@@ -18,6 +19,30 @@ from backend.app.api.websocket import manager as ws_manager
 
 
 task_manager = TaskManager()
+
+
+def _load_ner_content(ner_data) -> str:
+    """从 NER 结果关联的 ProcessingResult JSON 文件中加载文本内容"""
+    content = ""
+    if ner_data.processing_result and ner_data.processing_result.result_json_path:
+        json_path = ner_data.processing_result.result_json_path
+        if os.path.exists(json_path):
+            try:
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    parsed_data = json.load(f)
+                sections = parsed_data.get('sections', [])
+                content_parts = []
+                for sec in sections:
+                    if isinstance(sec, dict):
+                        text = sec.get('text', '')
+                        if text:
+                            content_parts.append(text)
+                content = '\n\n'.join(content_parts)
+            except Exception as e:
+                logger.warning(f"加载解析结果 JSON 失败: {e}")
+    if not content and ner_data.processing_result:
+        content = ner_data.processing_result.abstract or ""
+    return content
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
@@ -57,19 +82,25 @@ def re_extraction_task(
         from backend.app.models.base import AsyncSessionLocal
         from backend.app.models import NERResult, REResult
         from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
 
         async def _extract():
             async with AsyncSessionLocal() as db:
-                # 获取 NER 结果
+                # 获取 NER 结果（预加载关联的 ProcessingResult）
                 db_result = await db.execute(
-                    select(NERResult).where(NERResult.ner_id == ner_id)
+                    select(NERResult)
+                    .where(NERResult.ner_id == ner_id)
+                    .options(selectinload(NERResult.processing_result))
                 )
                 ner_data = db_result.scalar_one_or_none()
 
                 if not ner_data:
                     raise ValueError(f"NER 结果不存在: {ner_id}")
 
-                entities = ner_data.entities or []
+                entities = ner_data.entities if hasattr(ner_data, 'entities') else []
+
+                # 从关联的 ProcessingResult JSON 文件加载文本内容
+                content = _load_ner_content(ner_data)
 
                 # 更新进度
                 task_manager.update_task_status(
@@ -90,7 +121,7 @@ def re_extraction_task(
 
                 re_result = await re_service.extract_relations(
                     entities=entities,
-                    content=ner_data.result.content if ner_data.result else "",
+                    content=content,
                     config_id=config_id,
                     domain=domain
                 )
@@ -109,8 +140,8 @@ def re_extraction_task(
                     re_id=re_id,
                     ner_id=ner_id,
                     result_id=ner_data.result_id,
-                    relations=re_result.get('relations', []),
                     relation_count=len(re_result.get('relations', [])),
+                    relation_types=re_result.get('relation_types'),
                     status='completed',
                     user_id=user_id
                 )
@@ -119,6 +150,7 @@ def re_extraction_task(
 
                 # 保存结果文件
                 re_file = RE_RESULTS_DIR / f"{re_id}.json"
+                re_file.parent.mkdir(parents=True, exist_ok=True)
                 with open(re_file, 'w', encoding='utf-8') as f:
                     json.dump(re_result, f, ensure_ascii=False, indent=2)
 

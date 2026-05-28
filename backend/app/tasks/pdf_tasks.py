@@ -50,41 +50,18 @@ def parse_pdf_task(
     )
 
     try:
-        # 导入服务（延迟导入避免循环依赖）
-        from backend.app.services.pdf_service import PDFService
-        pdf_service = PDFService()
+        # 复用 pdf_service 中已有的完整处理流程（含数据库 upsert 逻辑）
+        from backend.app.services.pdf_service import process_pdf
 
-        # 使用 asyncio 运行异步服务
+        file_name = os.path.basename(file_path)
+
         async def _parse():
-            # 解析 PDF
-            result = await pdf_service.parse_pdf(file_path)
+            return await process_pdf(
+                file_path=file_path,
+                file_name=file_name,
+                user_id=user_id
+            )
 
-            # 保存结果
-            result_id = result.get('result_id')
-            if result_id:
-                # 更新数据库
-                from backend.app.models.base import AsyncSessionLocal
-                from backend.app.models import ProcessingResult, Paper
-                from sqlalchemy import select
-
-                async with AsyncSessionLocal() as db:
-                    # 创建或更新处理结果
-                    db_result = ProcessingResult(
-                        result_id=result_id,
-                        file_name=os.path.basename(file_path),
-                        title=result.get('title', ''),
-                        abstract=result.get('abstract', ''),
-                        sections=result.get('sections', []),
-                        content=result.get('content', ''),
-                        status='completed',
-                        user_id=user_id
-                    )
-                    db.add(db_result)
-                    await db.commit()
-
-            return result
-
-        # 执行解析
         result = asyncio.run(_parse())
 
         # 更新进度
@@ -169,7 +146,6 @@ def extract_figures_task(
     )
 
     try:
-        from backend.app.services.pdf_service import PDFService
         from backend.app.models.base import AsyncSessionLocal
         from backend.app.models import ProcessingResult
         from sqlalchemy import select
@@ -180,16 +156,23 @@ def extract_figures_task(
                 db_result = await db.execute(
                     select(ProcessingResult).where(ProcessingResult.result_id == result_id)
                 )
-                result = db_result.scalar_one_or_none()
+                paper = db_result.scalar_one_or_none()
 
-                if not result:
+                if not paper:
                     raise ValueError(f"处理结果不存在: {result_id}")
 
-                # 提取图片
-                pdf_service = PDFService()
-                # 这里可以添加图片提取逻辑
+                # 从解析结果文件中提取图片信息
+                figures = []
+                if paper.result_json_path:
+                    import json
+                    try:
+                        with open(paper.result_json_path, 'r', encoding='utf-8') as f:
+                            parsed_data = json.load(f)
+                        figures = parsed_data.get('figures', [])
+                    except Exception as e:
+                        logger.warning(f"读取解析结果文件失败: {e}")
 
-                return {"result_id": result_id, "figures": []}
+                return {"result_id": result_id, "figures": figures}
 
         result = asyncio.run(_extract())
 

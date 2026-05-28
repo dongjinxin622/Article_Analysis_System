@@ -8,6 +8,7 @@ NER 处理 Celery 任务
 import asyncio
 import uuid
 import json
+import os
 from typing import Dict, Any, List
 from loguru import logger
 
@@ -18,6 +19,30 @@ from backend.app.api.websocket import manager as ws_manager
 
 
 task_manager = TaskManager()
+
+
+def _load_parsed_content(paper) -> tuple:
+    """从 ProcessingResult 的 JSON 文件中加载解析内容"""
+    content = ""
+    sections = []
+    if paper.result_json_path and os.path.exists(paper.result_json_path):
+        try:
+            with open(paper.result_json_path, 'r', encoding='utf-8') as f:
+                parsed_data = json.load(f)
+            sections = parsed_data.get('sections', [])
+            # 从 sections 拼接正文内容
+            content_parts = []
+            for sec in sections:
+                if isinstance(sec, dict):
+                    text = sec.get('text', '')
+                    if text:
+                        content_parts.append(text)
+            content = '\n\n'.join(content_parts)
+        except Exception as e:
+            logger.warning(f"加载解析结果 JSON 失败: {e}")
+    if not content:
+        content = paper.abstract or ""
+    return content, sections
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
@@ -69,9 +94,8 @@ def ner_extraction_task(
                 if not paper:
                     raise ValueError(f"处理结果不存在: {result_id}")
 
-                # 获取内容
-                content = paper.content or ""
-                sections = paper.sections or []
+                # 从 JSON 文件加载解析内容（ProcessingResult 模型无 content/sections 列）
+                content, sections = _load_parsed_content(paper)
 
                 # 更新进度
                 task_manager.update_task_status(
@@ -110,8 +134,8 @@ def ner_extraction_task(
                 db_ner = NERResult(
                     ner_id=ner_id,
                     result_id=result_id,
-                    entities=ner_result.get('entities', []),
                     entity_count=len(ner_result.get('entities', [])),
+                    entity_types=ner_result.get('entity_types'),
                     status='completed',
                     user_id=user_id
                 )
@@ -120,6 +144,7 @@ def ner_extraction_task(
 
                 # 保存结果文件
                 ner_file = NER_RESULTS_DIR / f"{ner_id}.json"
+                ner_file.parent.mkdir(parents=True, exist_ok=True)
                 with open(ner_file, 'w', encoding='utf-8') as f:
                     json.dump(ner_result, f, ensure_ascii=False, indent=2)
 
