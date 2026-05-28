@@ -69,6 +69,20 @@ server {
         try_files \$uri \$uri/ /index.html;
     }
 
+    # WebSocket 代理（必须在 /api/ 之前匹配，且路径带 /api/v1/ws/ 前缀）
+    location /api/v1/ws/ {
+        proxy_pass http://backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+
     # API 代理
     location /api/ {
         limit_req zone=api burst=20 nodelay;
@@ -82,17 +96,6 @@ server {
         proxy_connect_timeout 60s;
         proxy_send_timeout 300s;
         client_max_body_size 100m;
-    }
-
-    # WebSocket 代理
-    location /ws {
-        proxy_pass http://backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_read_timeout 86400s;
     }
 
     # 健康检查
@@ -131,6 +134,20 @@ server {
         try_files \$uri \$uri/ /index.html;
     }
 
+    # WebSocket 代理（必须在 /api/ 之前匹配，且路径带 /api/v1/ws/ 前缀）
+    location /api/v1/ws/ {
+        proxy_pass http://backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+
     # API 代理
     location /api/ {
         limit_req zone=api burst=20 nodelay;
@@ -144,17 +161,6 @@ server {
         proxy_connect_timeout 60s;
         proxy_send_timeout 300s;
         client_max_body_size 100m;
-    }
-
-    # WebSocket 代理
-    location /ws {
-        proxy_pass http://backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_read_timeout 86400s;
     }
 
     # 健康检查
