@@ -11,6 +11,7 @@ from httpx import ASGITransport, AsyncClient
 
 # ==================== 注册端点测试 ====================
 
+@pytest.mark.skip(reason="注册功能暂时关闭")
 class TestRegisterEndpoint:
     """POST /api/v1/users/register"""
 
@@ -71,11 +72,10 @@ class TestLoginEndpoint:
     """POST /api/v1/users/login"""
 
     @pytest.mark.anyio
-    async def test_login_success(self, test_client):
+    async def test_login_success(self, test_client, test_db_session):
         """正确凭据应返回双令牌"""
-        await test_client.post("/api/v1/users/register", json={
-            "username": "loginuser", "password": "Test123456", "repassword": "Test123456",
-        })
+        from backend.app.services import user_service
+        await user_service.create_user(test_db_session, username="loginuser", password="Test123456")
         resp = await test_client.post("/api/v1/users/login", json={
             "username": "loginuser", "password": "Test123456",
         })
@@ -87,11 +87,10 @@ class TestLoginEndpoint:
         assert data["user"]["username"] == "loginuser"
 
     @pytest.mark.anyio
-    async def test_login_wrong_password(self, test_client):
+    async def test_login_wrong_password(self, test_client, test_db_session):
         """错误密码应返回 401"""
-        await test_client.post("/api/v1/users/register", json={
-            "username": "wrongpw", "password": "Test123456", "repassword": "Test123456",
-        })
+        from backend.app.services import user_service
+        await user_service.create_user(test_db_session, username="wrongpw", password="Test123456")
         resp = await test_client.post("/api/v1/users/login", json={
             "username": "wrongpw", "password": "WrongPassword",
         })
@@ -404,21 +403,14 @@ class TestFullLifecycle:
 
     @pytest.mark.anyio
     async def test_full_lifecycle(self, test_client):
-        # 1. 注册
-        reg_resp = await test_client.post("/api/v1/users/register", json={
-            "username": "lifecycle", "password": "StartPass1", "repassword": "StartPass1",
-        })
-        assert reg_resp.status_code == 200
-        public_id = reg_resp.json()["public_id"]
-
-        # 2. 登录
+        # 1. 创建用户并登录
         tokens = await _register_and_login(test_client, "lifecycle", "StartPass1")
 
-        # 3. 获取个人信息
+        # 2. 获取个人信息
         me = await test_client.get("/api/v1/users/me", headers={
             "Authorization": f"Bearer {tokens['access_token']}"
         })
-        assert me.json()["public_id"] == public_id
+        public_id = me.json()["public_id"]
 
         # 4. 改资料
         await test_client.put("/api/v1/users/me/profile", json={
@@ -449,10 +441,11 @@ class TestFullLifecycle:
 # ==================== 辅助函数 ====================
 
 async def _register_and_login(client: AsyncClient, username: str, password: str) -> dict:
-    """辅助：注册用户并登录，返回 tokens"""
-    await client.post("/api/v1/users/register", json={
-        "username": username, "password": password, "repassword": password,
-    })
+    """辅助：创建用户并登录，返回 tokens（绕过已关闭的注册 API）"""
+    from backend.app.models.base import AsyncSessionLocal
+    from backend.app.services import user_service
+    async with AsyncSessionLocal() as db:
+        await user_service.create_user(db, username=username, password=password)
     resp = await client.post("/api/v1/users/login", json={
         "username": username, "password": password,
     })

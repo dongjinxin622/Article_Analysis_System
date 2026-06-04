@@ -174,12 +174,15 @@ function switchToRegister() {
           </el-form-item>
         </el-form>
 
+        <!-- 注册功能暂时关闭 -->
+        <!--
         <div class="switch-row">
           <span class="switch-text">没有账号？</span>
           <el-link type="primary" :underline="false" @click="switchToRegister">
             立即注册
           </el-link>
         </div>
+        -->
       </template>
 
       <!-- 注册模式 -->

@@ -51,35 +51,36 @@ def _raise_as_http(exc: Exception) -> HTTPException:
     return HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="服务器内部错误")
 
 
-@router.post("/users/register", response_model=UserResponse, summary="用户注册")
-async def register_user(
-    user_data: UserCreate,
-    db: AsyncSession = Depends(get_db),
-):
-    """注册新用户"""
-    try:
-        user = await user_service.create_user(
-            db,
-            username=user_data.username,
-            password=user_data.password,
-            email=user_data.email,
-            full_name=user_data.full_name,
-        )
-        return UserResponse(
-            public_id=user.public_id,
-            username=user.username,
-            nickname=user.nickname,
-            email=user.email,
-            avatar_url=user.avatar_url,
-            is_superuser=user.is_superuser,
-            disabled=user.is_disabled,
-            created_at=user.created_at,
-            last_login_at=user.last_login_at,
-        )
-    except UserServiceError as exc:
-        raise _raise_as_http(exc)
-    except ValueError as exc:
-        raise _raise_as_http(exc)
+# 注册功能暂时关闭
+# @router.post("/users/register", response_model=UserResponse, summary="用户注册")
+# async def register_user(
+#     user_data: UserCreate,
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     """注册新用户"""
+#     try:
+#         user = await user_service.create_user(
+#             db,
+#             username=user_data.username,
+#             password=user_data.password,
+#             email=user_data.email,
+#             full_name=user_data.full_name,
+#         )
+#         return UserResponse(
+#             public_id=user.public_id,
+#             username=user.username,
+#             nickname=user.nickname,
+#             email=user.email,
+#             avatar_url=user.avatar_url,
+#             is_superuser=user.is_superuser,
+#             disabled=user.is_disabled,
+#             created_at=user.created_at,
+#             last_login_at=user.last_login_at,
+#         )
+#     except UserServiceError as exc:
+#         raise _raise_as_http(exc)
+#     except ValueError as exc:
+#         raise _raise_as_http(exc)
 
 
 @router.post("/users/login", response_model=LoginResponse, summary="用户登录")
