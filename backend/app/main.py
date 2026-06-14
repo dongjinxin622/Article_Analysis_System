@@ -17,6 +17,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from backend.app.core.config import settings, ensure_directories, BASE_DIR
 from backend.app.models.base import init_db, AsyncSessionLocal
 from backend.app.api.v1 import pdf, ner, re, batch, domain, extraction, user, config, task, excel_extraction, jc, comprehensive
+from backend.app.routers import tasks as async_task_router
 from backend.app.domain import DomainRegistry
 from backend.app.domain.material import REBCOAnalyzer  # 导入以触发装饰器注册
 
@@ -141,6 +142,15 @@ async def lifespan(app: FastAPI):
     DomainRegistry.register('rebco', rebco_analyzer)
     logger.info(f"已注册领域分析器: {DomainRegistry.list_domains()}")
 
+    # 初始化异步任务引擎 — 注册 Redis 客户端和会话工厂
+    from backend.app.core.tasks.engine import default_async_task_engine
+    from backend.app.core.redis_client import get_redis
+    redis_client = await get_redis()
+    default_async_task_engine.redis_client = redis_client
+    default_async_task_engine.session_maker = AsyncSessionLocal
+    default_async_task_engine.register_async_task_modules()
+    logger.info(f"异步任务引擎已注册处理器: {default_async_task_engine.registry.keys()}")
+
     yield
 
     # 关闭时执行
@@ -224,6 +234,7 @@ app.include_router(task.router, prefix=settings.API_V1_PREFIX, tags=["任务管�
 app.include_router(excel_extraction.router, prefix=settings.API_V1_PREFIX, tags=["Excel批量提取"])
 app.include_router(jc.router, prefix=settings.API_V1_PREFIX, tags=["Jc数据库搜索"])
 app.include_router(comprehensive.router, prefix=settings.API_V1_PREFIX, tags=["综合分析"])
+app.include_router(async_task_router.router, tags=["异步任务引擎"])
 
 
 # 全局异常处理器 - 捕获所有未处理的异常

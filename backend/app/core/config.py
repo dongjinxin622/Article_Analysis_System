@@ -129,9 +129,37 @@ class Settings(BaseSettings):
     DEFAULT_ADMIN_PASSWORD: str = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
     DEFAULT_ADMIN_EMAIL: str = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@example.com")
 
-    # Celery 配置
+    # Celery 配置（保留用于定时任务 Beat）
     CELERY_BROKER_URL: str = ""
     CELERY_RESULT_BACKEND: str = ""
+
+    # ── 异步任务引擎配置 ──
+    # Redis Stream
+    REDIS_TASK_STREAM_NAME: str = os.getenv("REDIS_TASK_STREAM_NAME", "task:stream")
+    REDIS_TASK_CONSUMER_GROUP: str = os.getenv("REDIS_TASK_CONSUMER_GROUP", "task-workers")
+    REDIS_TASK_STREAM_MAX_LEN: int = int(os.getenv("REDIS_TASK_STREAM_MAX_LEN", "10000"))
+
+    # 任务模块声明
+    ASYNC_TASK_MODULES: str = os.getenv(
+        "ASYNC_TASK_MODULES",
+        "backend.app.tasks.pdf,backend.app.tasks.ner,backend.app.tasks.re,"
+        "backend.app.tasks.pipeline,backend.app.tasks.domain",
+    )
+
+    # Worker 配置
+    ASYNC_TASK_WORKER_CONSUMER_NAME: str = os.getenv("ASYNC_TASK_WORKER_CONSUMER_NAME", "")
+    ASYNC_TASK_WORKER_BATCH_SIZE: int = int(os.getenv("ASYNC_TASK_WORKER_BATCH_SIZE", "4"))
+    ASYNC_TASK_WORKER_BLOCK_MS: int = int(os.getenv("ASYNC_TASK_WORKER_BLOCK_MS", "2000"))
+    ASYNC_TASK_WORKER_IDLE_SLEEP_SECONDS: float = float(os.getenv("ASYNC_TASK_WORKER_IDLE_SLEEP_SECONDS", "0.5"))
+    ASYNC_TASK_WORKER_MAX_CONCURRENCY: int = int(os.getenv("ASYNC_TASK_WORKER_MAX_CONCURRENCY", "4"))
+    ASYNC_TASK_WORKER_TASK_TIMEOUT_SECONDS: float = float(os.getenv("ASYNC_TASK_WORKER_TASK_TIMEOUT_SECONDS", "3600"))
+    ASYNC_TASK_WORKER_LOG_ENABLED: str = os.getenv("ASYNC_TASK_WORKER_LOG_ENABLED", "true")
+    ASYNC_TASK_WORKER_HEARTBEAT_INTERVAL_SECONDS: float = float(os.getenv("ASYNC_TASK_WORKER_HEARTBEAT_INTERVAL_SECONDS", "30"))
+    ASYNC_TASK_WORKER_MAX_RETRIES: int = int(os.getenv("ASYNC_TASK_WORKER_MAX_RETRIES", "3"))
+    ASYNC_TASK_WORKER_RETRY_BACKOFF_SECONDS: float = float(os.getenv("ASYNC_TASK_WORKER_RETRY_BACKOFF_SECONDS", "30"))
+    ASYNC_TASK_WORKER_SHUTDOWN_TIMEOUT_SECONDS: float = float(os.getenv("ASYNC_TASK_WORKER_SHUTDOWN_TIMEOUT_SECONDS", "30"))
+    ASYNC_TASK_STALE_RUNNING_TIMEOUT_SECONDS: float = float(os.getenv("ASYNC_TASK_STALE_RUNNING_TIMEOUT_SECONDS", "600"))
+    ASYNC_TASK_ORPHAN_SCAVENGER_INTERVAL_SECONDS: float = float(os.getenv("ASYNC_TASK_ORPHAN_SCAVENGER_INTERVAL_SECONDS", "30"))
 
     # CORS 配置（逗号分隔的域名列表，* 表示全部允许）
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")

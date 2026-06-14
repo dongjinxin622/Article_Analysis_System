@@ -26,6 +26,7 @@ const menuItems = [
   { path: '/pdf-batch', icon: 'Files', title: 'PDF批量提取' },
   { path: '/excel-batch', icon: 'Grid', title: '题录批量评估' },
   { path: '/domain', icon: 'DataAnalysis', title: 'REBCO领域分析' },
+  { path: '/tasks', icon: 'List', title: '异步任务' },
   { path: '/settings', icon: 'Setting', title: '系统设置' },
   { path: '/logs', icon: 'Notebook', title: '日志查看' }
 ]
