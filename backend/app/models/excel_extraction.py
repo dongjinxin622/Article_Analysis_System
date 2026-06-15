@@ -40,7 +40,7 @@ class ExcelExtractionTask(Base):
     config = Column(JSON)
     # {
     #   "domain_fields": [{"name": "...", "description": "..."}],
-    #   "llm_model": "qwen-plus",
+    #   "llm_model": "qwen3.7-plus",
     #   "max_concurrent": 5,
     #   "dedup_field": "doi",
     #   "quality_threshold": 0.6,

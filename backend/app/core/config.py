@@ -98,7 +98,7 @@ class Settings(BaseSettings):
     # LLM 配置
     API_KEY: str = os.getenv("API_KEY", "")
     BASE_URL: str = os.getenv("BASE_URL", "")
-    MODEL_NAME: str = os.getenv("MODEL_NAME", "qwen-plus")
+    MODEL_NAME: str = os.getenv("MODEL_NAME", "qwen3.7-plus")
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-v4")
     EMBEDDING_DIM: int = int(os.getenv("EMBEDDING_DIM", "1024"))
 
