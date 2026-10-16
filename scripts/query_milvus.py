@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 from pymilvus import MilvusClient
 
 # Milvus 连接配置
-MILVUS_URI = "http://8.147.69.101:19530"
+MILVUS_URI = "http://localhost:19530"
 MILVUS_DB = "scipdf"
 
 # 已知的 Collection 名称

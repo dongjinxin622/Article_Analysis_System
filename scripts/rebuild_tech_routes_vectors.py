@@ -22,7 +22,7 @@ MILVUS_URI = settings.MILVUS_URI
 MILVUS_DATABASE = settings.MILVUS_DATABASE
 EMBEDDING_DIM = settings.EMBEDDING_DIM
 
-BASE_DIR = r"E:\武汉工作\00.高温超导\深度推理方法"
+BASE_DIR = r"data\深度推理方法"
 TR_PKL = os.path.join(BASE_DIR, "technical_route.pkl")
 
 

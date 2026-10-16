@@ -11,11 +11,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Excel 文件路径
-EXCEL_PATH_1 = r'E:\武汉工作\00.高温超导\图表数据_完成处理\results\Jc_final_part1.xlsx'
-EXCEL_PATH_2 = r'E:\武汉工作\00.高温超导\图表数据_完成处理\results\Jc_final_part2.xlsx'
+EXCEL_PATH_1 = r'data\图表数据_完成处理\results\Jc_final_part1.xlsx'
+EXCEL_PATH_2 = r'data\图表数据_完成处理\results\Jc_final_part2.xlsx'
 
 # MySQL 连接配置
-MYSQL_HOST = '8.147.69.101'
+MYSQL_HOST = 'localhost'
 MYSQL_PORT = 3306
 MYSQL_USER = 'root'
 MYSQL_PASSWORD = 'Djx3861599!'

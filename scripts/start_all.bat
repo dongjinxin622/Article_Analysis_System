@@ -4,7 +4,7 @@ echo   SciPDF v3 全服务启动脚本
 echo ========================================
 echo.
 
-set PROJECT_DIR=E:\武汉工作\00. 研究课题\Article_Analysis_System_v3
+set PROJECT_DIR=data\00. 研究课题\Article_Analysis_System_v3
 
 echo [1/4] 启动后端 API 服务...
 start "Backend API" cmd /k "cd /d %PROJECT_DIR%\backend && python main.py"

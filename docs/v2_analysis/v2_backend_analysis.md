@@ -85,7 +85,7 @@ Article_Analysis_System_v2/
 
 ### 2.1 配置文件 (backend/config.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\config.py`
+**位置**: `.\backend\config.py`
 
 **功能说明**:
 - 使用 Pydantic Settings 进行配置管理
@@ -113,7 +113,7 @@ Article_Analysis_System_v2/
 
 ### 3.1 数据库连接 (backend/models/database.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\models\database.py`
+**位置**: `.\backend\models\database.py`
 
 **功能说明**:
 - SQLAlchemy 数据库引擎创建
@@ -132,7 +132,7 @@ def init_db()  # 创建所有表
 
 ### 3.2 数据模型 (backend/models/db_models.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\models\db_models.py`
+**位置**: `.\backend\models\db_models.py`
 
 **数据表设计**:
 
@@ -152,7 +152,7 @@ def init_db()  # 创建所有表
 
 ### 4.1 PDF 上传 API (backend/api/upload.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\api\upload.py`
+**位置**: `.\backend\api\upload.py`
 
 **API 接口**:
 - `POST /api/upload` - 上传 PDF 文件并触发解析
@@ -168,7 +168,7 @@ def init_db()  # 创建所有表
 
 ### 4.2 PDF 解析服务 (backend/services/pdf_service.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\services\pdf_service.py`
+**位置**: `.\backend\services\pdf_service.py`
 
 **核心函数**:
 
@@ -192,7 +192,7 @@ def init_db()  # 创建所有表
 
 ### 4.3 scipdf PDF 解析库 (scipdf/pdf/parse_pdf.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\scipdf\pdf\parse_pdf.py`
+**位置**: `.\scipdf\pdf\parse_pdf.py`
 
 **核心功能**:
 - GROBID 服务集成（调用 GROBID API 进行 PDF 解析）
@@ -218,7 +218,7 @@ def init_db()  # 创建所有表
 
 ### 5.1 NER API (backend/api/ner.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\api\ner.py`
+**位置**: `.\backend\api\ner.py`
 
 **API 接口**:
 
@@ -247,7 +247,7 @@ class NERRequest:
 
 ### 5.2 NER 服务 (backend/services/ner_service.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\services\ner_service.py`
+**位置**: `.\backend\services\ner_service.py`
 
 **核心函数**:
 
@@ -282,7 +282,7 @@ class NERRequest:
 
 ### 6.1 RE API (backend/api/re.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\api\re.py`
+**位置**: `.\backend\api\re.py`
 
 **API 接口**:
 
@@ -301,7 +301,7 @@ class RERequest:
 
 ### 6.2 RE 服务 (backend/services/re_service.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\services\re_service.py`
+**位置**: `.\backend\services\re_service.py`
 
 **核心函数**:
 
@@ -327,7 +327,7 @@ class RERequest:
 
 ### 7.1 深度推理 API (backend/api/deep_reasoning.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\api\deep_reasoning.py`
+**位置**: `.\backend\api\deep_reasoning.py`
 
 **API 接口**:
 
@@ -353,7 +353,7 @@ class RERequest:
 
 ### 7.2 深度推理服务 (backend/services/deep_reasoning_service.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\services\deep_reasoning_service.py`
+**位置**: `.\backend\services\deep_reasoning_service.py`
 
 **核心类**: `DeepReasoningService`
 
@@ -376,7 +376,7 @@ class RERequest:
 
 ### 7.3 基础工具类 (deep-reasoning-methods/base_methods.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\deep-reasoning-methods\base_methods.py`
+**位置**: `.\deep-reasoning-methods\base_methods.py`
 
 **核心类**:
 
@@ -408,7 +408,7 @@ class TaskProcessor:
 
 ### 7.4 技术路线构建 (deep-reasoning-methods/tech_route/techroute_builder.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\deep-reasoning-methods\tech_route\techroute_builder.py`
+**位置**: `.\deep-reasoning-methods\tech_route\techroute_builder.py`
 
 **核心功能**:
 - 从 NER+RE 数据构建实体关系网络
@@ -428,7 +428,7 @@ class TaskProcessor:
 
 ### 7.5 Jc 指标提取 (deep-reasoning-methods/jc_index/jc_index_extractor.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\deep-reasoning-methods\jc_index\jc_index_extractor.py`
+**位置**: `.\deep-reasoning-methods\jc_index\jc_index_extractor.py`
 
 **核心类**: `JcIndexExtractor`
 
@@ -455,7 +455,7 @@ class TaskProcessor:
 
 ### 8.1 批量提取 API (backend/api/batch_extraction.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\api\batch_extraction.py`
+**位置**: `.\backend\api\batch_extraction.py`
 
 **API 接口**:
 
@@ -469,7 +469,7 @@ class TaskProcessor:
 
 ### 8.2 批量提取服务 (backend/services/batch_extraction_service.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\services\batch_extraction_service.py`
+**位置**: `.\backend\services\batch_extraction_service.py`
 
 **核心类**: `BatchExtractionService`, `BatchExtractionTask`
 
@@ -506,7 +506,7 @@ STEPS = [
 
 ### 9.1 任务管理器 (backend/services/task_manager.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\services\task_manager.py`
+**位置**: `.\backend\services\task_manager.py`
 
 **功能**:
 - 创建和管理异步分析任务
@@ -522,7 +522,7 @@ STEPS = [
 
 ### 10.1 报告服务 (backend/services/report_service.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\services\report_service.py`
+**位置**: `.\backend\services\report_service.py`
 
 **功能**:
 - 生成 Markdown 分析报告
@@ -537,7 +537,7 @@ STEPS = [
 
 ### 11.1 基础 Schema (backend/schemas/schemas.py)
 
-**位置**: `E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\backend\schemas\schemas.py`
+**位置**: `.\backend\schemas\schemas.py`
 
 **核心模型**:
 | 模型名 | 用途 |

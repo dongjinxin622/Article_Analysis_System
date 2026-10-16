@@ -61,7 +61,7 @@ class Settings(BaseSettings):
                 f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DATABASE}")
 
     # Milvus 向量数据库配置 (云端部署)
-    MILVUS_HOST: str = os.getenv("MILVUS_HOST", "8.147.69.101")
+    MILVUS_HOST: str = os.getenv("MILVUS_HOST", "localhost")
     MILVUS_PORT: int = int(os.getenv("MILVUS_PORT", "19530"))
     MILVUS_USER: str = os.getenv("MILVUS_USER", "")
     MILVUS_PASSWORD: str = os.getenv("MILVUS_PASSWORD", "")

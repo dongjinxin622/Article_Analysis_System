@@ -9,7 +9,7 @@
 ## 🚀 云端部署规范
 
 **服务器信息**
-- 地址：`8.147.69.101`，用户：`root`
+- 地址：`localhost`，用户：`root`
 - 项目目录：`/opt/scipdf/`
 - Git 仓库：`https://github.com/dongjinxin622/Article_Analysis_System.git`（private，分支 `v0.3`）
 
@@ -19,7 +19,7 @@
 git add . && git commit -m "..." && git push origin v0.3
 
 # 2. 服务器：拉取最新代码并重建
-ssh root@8.147.69.101
+ssh root@localhost
 cd /opt/scipdf && git pull origin v0.3
 
 # 按需重建（只改了什么就重建什么）

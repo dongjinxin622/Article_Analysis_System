@@ -51,7 +51,7 @@
 ### 技术约束
 
 - 向量模型：`text-embedding-v4`，维度 1024
-- 向量数据库：Milvus `scipdf`，云端 8.147.69.101:19530
+- 向量数据库：Milvus `scipdf`，云端 localhost:19530
 - API 端点：`https://dashscope.aliyuncs.com/compatible-mode/v1`
 - 复用以 `深度推理方法/` 目录中的生成逻辑
 
@@ -139,14 +139,14 @@
 ```python
 EMBEDDING_MODEL = "text-embedding-v4"
 EMBEDDING_DIM = 1024
-API_KEY = "sk-93b1c3640da64870b81f430e1495f73e"
+API_KEY = "<DASHSCOPE_API_KEY>"
 BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 ```
 
 ### 4.2 Milvus 连接配置
 
 ```python
-MILVUS_URI = "http://8.147.69.101:19530"
+MILVUS_URI = "http://localhost:19530"
 MILVUS_DATABASE = "scipdf"
 COLLECTION_EXP_SCHEMES = "exp_schemes"
 COLLECTION_TECH_ROUTES = "tech_routes"

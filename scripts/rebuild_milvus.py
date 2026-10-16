@@ -14,11 +14,11 @@ from pymilvus import MilvusClient
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-MILVUS_URI = "http://8.147.69.101:19530"
+MILVUS_URI = "http://localhost:19530"
 MILVUS_DATABASE = "scipdf"
 EMBEDDING_DIM = 1024
 
-BASE_DIR = r"E:\武汉工作\00.高温超导\深度推理方法"
+BASE_DIR = r"data\深度推理方法"
 EXP_PKL = os.path.join(BASE_DIR, "experimemtal_scheme.pkl")
 TR_PKL = os.path.join(BASE_DIR, "technical_route.pkl")
 

@@ -28,20 +28,20 @@ logger = logging.getLogger(__name__)
 # ============================================================
 # 配置
 # ============================================================
-API_KEY = "sk-93b1c3640da64870b81f430e1495f73e"
+API_KEY = os.environ.get("DASHSCOPE_API_KEY", "")
 BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 EMBEDDING_MODEL = "text-embedding-v4"
 EMBEDDING_DIM = 1024
 
-MILVUS_URI = "http://8.147.69.101:19530"
+MILVUS_URI = "http://localhost:19530"
 MILVUS_DATABASE = "scipdf"
 
 # 数据文件路径
-NER_PATH = r"E:\武汉工作\00.高温超导\results\NER_results_3526_revised.xlsx"
-RE_PATH = r"E:\武汉工作\00.高温超导\results\RE_results_revised.xlsx"
-TECHROUTE_PKL = r"E:\武汉工作\00.高温超导\深度推理方法\technical_route.pkl"
-EXPSCHEME_PKL = r"E:\武汉工作\00.高温超导\深度推理方法\experimemtal_scheme.pkl"
-THESAURUS_PATH = r"E:\武汉工作\00.高温超导\深度推理方法\thesaurus_relation_data.json"
+NER_PATH = r"data\results\NER_results_3526_revised.xlsx"
+RE_PATH = r"data\results\RE_results_revised.xlsx"
+TECHROUTE_PKL = r"data\深度推理方法\technical_route.pkl"
+EXPSCHEME_PKL = r"data\深度推理方法\experimemtal_scheme.pkl"
+THESAURUS_PATH = r"data\深度推理方法\thesaurus_relation_data.json"
 
 # 输出路径
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data")

@@ -17,16 +17,16 @@ from loguru import logger
 from pathlib import Path
 
 # 配置
-MYSQL_HOST = "8.147.69.101"
+MYSQL_HOST = "localhost"
 MYSQL_PORT = 3306
 MYSQL_USER = "root"
 MYSQL_PASSWORD = "Djx3861599!"
 MYSQL_DATABASE = "article_analysis_v3"
 
-MILVUS_URI = "http://8.147.69.101:19530"
+MILVUS_URI = "http://localhost:19530"
 VECTOR_DIM = 1024  # v2 向量维度
 
-V2_DB_PATH = r"E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\data\REBCO_database\rebco.db"
+V2_DB_PATH = r".\data\REBCO_database\rebco.db"
 
 
 class DataMigrator:

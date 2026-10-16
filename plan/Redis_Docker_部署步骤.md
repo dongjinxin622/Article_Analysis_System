@@ -144,7 +144,7 @@ docker-compose up -d
 ---
 
 **完成后请告诉我：**
-- Redis 服务器地址（如：8.147.69.101）
+- Redis 服务器地址（如：localhost）
 - Redis 端口（默认：6379）
 - Redis 密码
 

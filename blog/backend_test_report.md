@@ -21,9 +21,9 @@
 
 | 组件 | 地址 | 状态 |
 |------|------|------|
-| MySQL | 8.147.69.101:3306 | ✅ 已连接 |
-| Milvus | 8.147.69.101:19530 | ✅ 已连接 |
-| GROBID | 8.147.69.101:8070 | ✅ 配置完成 |
+| MySQL | localhost:3306 | ✅ 已连接 |
+| Milvus | localhost:19530 | ✅ 已连接 |
+| GROBID | localhost:8070 | ✅ 配置完成 |
 
 ### 2.2 数据迁移验证
 
@@ -237,23 +237,23 @@ PORT=8000
 API_V1_PREFIX=/api/v1
 
 # MySQL 数据库 - 云端
-MYSQL_HOST=8.147.69.101
+MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_USER=root
 MYSQL_PASSWORD=Djx3861599!
 MYSQL_DATABASE=article_analysis_v3
 
 # Milvus 向量数据库 - 云端
-MILVUS_URI=http://8.147.69.101:19530
-MILVUS_HOST=8.147.69.101
+MILVUS_URI=http://localhost:19530
+MILVUS_HOST=localhost
 MILVUS_PORT=19530
 EMBEDDING_DIM=1024
 
 # GROBID 配置 - 云端
-GROBID_URL=http://8.147.69.101:8070
+GROBID_URL=http://localhost:8070
 
 # LLM 配置 - 通义千问
-API_KEY=sk-93b1c3640da64870b81f430e1495f73e
+API_KEY=<DASHSCOPE_API_KEY>
 BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 MODEL_NAME=qwen3.5-plus
 

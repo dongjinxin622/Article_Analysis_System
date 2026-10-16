@@ -533,7 +533,7 @@ npm install apexcharts vue3-apexcharts
 mkdir -p data/{uploads,results,ner_results,re_results,failed_logs}
 
 # 2. 执行数据库迁移
-psql -h 8.147.69.101 -U root -d article_analysis_v3 -f ddl_task_engine.sql
+psql -h localhost -U root -d article_analysis_v3 -f ddl_task_engine.sql
 
 # 3. 启动后端
 uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload

@@ -10,10 +10,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # SQLite 数据库路径
-REBCO_DB_PATH = r'E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\data\REBCO_database\rebco.db'
+REBCO_DB_PATH = r'.\data\REBCO_database\rebco.db'
 
 # MySQL 连接配置
-MYSQL_HOST = '8.147.69.101'
+MYSQL_HOST = 'localhost'
 MYSQL_PORT = 3306
 MYSQL_USER = 'root'
 MYSQL_PASSWORD = 'Djx3861599!'

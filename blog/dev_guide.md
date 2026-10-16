@@ -87,14 +87,14 @@ Article_Analysis_System_v3/
 
 ```env
 # MySQL 数据库
-MYSQL_HOST=8.147.69.101
+MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_USER=root
 MYSQL_PASSWORD=your_password
 MYSQL_DATABASE=article_analysis_v3
 
 # Milvus 向量数据库
-MILVUS_HOST=8.147.69.101
+MILVUS_HOST=localhost
 MILVUS_PORT=19530
 EMBEDDING_DIM=1024
 
@@ -157,12 +157,12 @@ tail -n 50 logs/app.log
 ## 数据库连接
 
 ### MySQL (云端)
-- 地址: 8.147.69.101:3306
+- 地址: localhost:3306
 - 数据库: article_analysis_v3
 - 已迁移数据: tech_routes (1949条), exp_schemes (1950条)
 
 ### Milvus (云端)
-- 地址: 8.147.69.101:19530
+- 地址: localhost:19530
 - Collections: paper_embeddings, entity_embeddings, sentence_embeddings
 
 ---

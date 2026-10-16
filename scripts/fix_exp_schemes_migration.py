@@ -20,13 +20,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 配置
-MILVUS_URI = "http://8.147.69.101:19530"
+MILVUS_URI = "http://localhost:19530"
 MILVUS_DATABASE = "scipdf"
 COLLECTION_NAME = "exp_schemes"
 EMBEDDING_DIM = 1024
 
 # .pkl 文件路径
-PKL_PATH = r"E:\武汉工作\00.高温超导\深度推理方法\experimemtal_scheme.pkl"
+PKL_PATH = r"data\深度推理方法\experimemtal_scheme.pkl"
 
 
 def connect_milvus():

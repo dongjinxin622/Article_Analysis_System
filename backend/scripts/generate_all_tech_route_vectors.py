@@ -6,6 +6,7 @@
 数据源见下方配置常量。目标：Milvus tech_routes collection
 """
 import pickle
+import os
 import json
 import copy
 import time
@@ -19,18 +20,18 @@ from openai import OpenAI
 from pymilvus import Collection, connections, utility, DataType
 
 # ========== 配置 ==========
-NER_PATH = r"E:\武汉工作\00.高温超导\results\NER_results_3526_revised.xlsx"
-RE_PATH = r"E:\武汉工作\00.高温超导\results\RE_results_revised.xlsx"
-CLS_PATH = r"E:\武汉工作\00. 研究课题\Article_Analysis_System_v2\data\cls_final.pkl"
-THESAURUS_PATH = r"E:\武汉工作\00.高温超导\深度推理方法\thesaurus_relation_data.json"
-EXISTING_TR_PATH = r"E:\武汉工作\00.高温超导\深度推理方法\technical_route.pkl"
+NER_PATH = r"data\results\NER_results_3526_revised.xlsx"
+RE_PATH = r"data\results\RE_results_revised.xlsx"
+CLS_PATH = r".\data\cls_final.pkl"
+THESAURUS_PATH = r"data\深度推理方法\thesaurus_relation_data.json"
+EXISTING_TR_PATH = r"data\深度推理方法\technical_route.pkl"
 
-API_KEY = "sk-93b1c3640da64870b81f430e1495f73e"
+API_KEY = os.environ.get("DASHSCOPE_API_KEY", "")
 BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 EMBEDDING_MODEL = "text-embedding-v4"
 EMBEDDING_DIM = 1024
 
-MILVUS_HOST = "8.147.69.101"
+MILVUS_HOST = "localhost"
 MILVUS_PORT = 19530
 
 # 分类 → tech_route 关键词映射（构建网络时的分类标签）

@@ -2,7 +2,7 @@ import pickle
 import os
 
 # 读取最新的批次结果
-batch_dir = 'E:/武汉工作/00. 研究课题/Article_Analysis_System_v3/batch_results/1f4b8e1b-532c-43'
+batch_dir = 'data/00. 研究课题/Article_Analysis_System_v3/batch_results/1f4b8e1b-532c-43'
 batch_file = os.path.join(batch_dir, 'batch_1.pkl')
 
 with open(batch_file, 'rb') as f:

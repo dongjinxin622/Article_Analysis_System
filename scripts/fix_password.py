@@ -4,7 +4,7 @@
 """
 import asyncio
 import sys
-sys.path.insert(0, 'E:\\武汉工作\\00. 研究课题\\Article_Analysis_System_v3')
+sys.path.insert(0, '.')
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 import bcrypt
 
 # 数据库配置
-DATABASE_URL = "mysql+aiomysql://root:Djx3861599!@8.147.69.101:3306/article_analysis_v3"
+DATABASE_URL = "mysql+aiomysql://root:Djx3861599!@localhost:3306/article_analysis_v3"
 
 
 def hash_password(password: str) -> str:

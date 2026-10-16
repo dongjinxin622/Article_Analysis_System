@@ -15,7 +15,7 @@
 - jc_indices_raw: 386712条 (Jc原始数据)
 ```
 
-### 1.2 云端MySQL（8.147.69.101）- 数据迁移不完整
+### 1.2 云端MySQL（localhost）- 数据迁移不完整
 
 ```
 数据库: article_analysis_v3
@@ -28,7 +28,7 @@
 
 **问题**：向量数据以pickle BLOB格式存储在SQLite中，无法直接导入MySQL TEXT字段。
 
-### 1.3 云端Milvus（8.147.69.101:19530）
+### 1.3 云端Milvus（localhost:19530）
 
 ```
 Collections:
@@ -238,7 +238,7 @@ def migrate_tech_routes():
     rows = cursor.fetchall()
 
     # 连接Milvus
-    client = MilvusClient(uri='http://8.147.69.101:19530')
+    client = MilvusClient(uri='http://localhost:19530')
     client.use_database('scipdf')
 
     # 创建Collection

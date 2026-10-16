@@ -176,7 +176,7 @@ task_result.json
 
 ### 步骤 2：初始化 Git 仓库
 ```bash
-cd E:\武汉工作\00. 研究课题\Article_Analysis_System_v3
+cd data\00. 研究课题\Article_Analysis_System_v3
 git init
 ```
 

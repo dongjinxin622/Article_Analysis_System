@@ -31,9 +31,9 @@ V2_ROOT = V3_ROOT.parent / "Article_Analysis_System_v2"
 V2_SQLITE_PATH = V2_ROOT / "data" / "REBCO_database" / "rebco.db"
 
 # 云端配置
-MILVUS_URI = "http://8.147.69.101:19530"
+MILVUS_URI = "http://localhost:19530"
 MILVUS_DATABASE = "scipdf"
-POSTGRES_HOST = "8.147.69.101"
+POSTGRES_HOST = "localhost"
 POSTGRES_PORT = 5432
 POSTGRES_USER = "root"
 POSTGRES_PASSWORD = "Djx3861599!"

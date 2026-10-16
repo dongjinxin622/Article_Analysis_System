@@ -8,7 +8,7 @@
 
 | 项目 | 状态 | 说明 |
 |------|------|------|
-| Redis 部署 | ✅ 完成 | 8.147.69.101:6379 |
+| Redis 部署 | ✅ 完成 | localhost:6379 |
 | Redis 密码 | ✅ 配置 | Djx3861599! |
 | .env 更新 | ✅ 完成 | REDIS_URL 已配置 |
 | Celery 配置 | ✅ 正常 | Broker URL 正确 |
@@ -174,7 +174,7 @@ async def get_services_status():
 ```batch
 @echo off
 echo 启动 Celery Worker...
-cd /d E:\武汉工作\00. 研究课题\Article_Analysis_System_v3\backend
+cd /d data\00. 研究课题\Article_Analysis_System_v3\backend
 celery -A backend.app.tasks worker -l info -P solo -Q pdf,ner,re,batch,default
 pause
 ```
@@ -184,15 +184,15 @@ pause
 ```batch
 @echo off
 echo 启动后端服务...
-start cmd /k "cd /d E:\武汉工作\00. 研究课题\Article_Analysis_System_v3\backend && python main.py"
+start cmd /k "cd /d data\00. 研究课题\Article_Analysis_System_v3\backend && python main.py"
 timeout /t 3 >nul
 
 echo 启动 Celery Worker...
-start cmd /k "cd /d E:\武汉工作\00. 研究课题\Article_Analysis_System_v3\backend && celery -A backend.app.tasks worker -l info -P solo"
+start cmd /k "cd /d data\00. 研究课题\Article_Analysis_System_v3\backend && celery -A backend.app.tasks worker -l info -P solo"
 timeout /t 3 >nul
 
 echo 启动前端服务...
-start cmd /k "cd /d E:\武汉工作\00. 研究课题\Article_Analysis_System_v3\frontend && npm run dev"
+start cmd /k "cd /d data\00. 研究课题\Article_Analysis_System_v3\frontend && npm run dev"
 
 echo 所有服务已启动
 pause
@@ -217,11 +217,11 @@ pause
 
 | 服务 | 地址 | 密码/密钥 | 状态 |
 |------|------|----------|------|
-| MySQL | 8.147.69.101:3306 | Djx3861599! | ✅ |
-| Milvus | 8.147.69.101:19530 | - | ✅ |
-| Redis | 8.147.69.101:6379 | Djx3861599! | ✅ |
-| GROBID | 8.147.69.101:8070 | - | ✅ |
-| LLM API | dashscope.aliyuncs.com | sk-93b1c364... | ✅ |
+| MySQL | localhost:3306 | Djx3861599! | ✅ |
+| Milvus | localhost:19530 | - | ✅ |
+| Redis | localhost:6379 | Djx3861599! | ✅ |
+| GROBID | localhost:8070 | - | ✅ |
+| LLM API | dashscope.aliyuncs.com | <DASHSCOPE_API_KEY> | ✅ |
 
 ---
 
